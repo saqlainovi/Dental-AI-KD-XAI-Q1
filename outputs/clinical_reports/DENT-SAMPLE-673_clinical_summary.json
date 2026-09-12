@@ -1,0 +1,372 @@
+{
+  "case_id": "DENT-SAMPLE-673",
+  "total_teeth_detected": 13,
+  "pathologies_detected": [
+    {
+      "tooth_fdi": 48,
+      "anatomy": "Lower Right 3rd Molar",
+      "condition": "Impacted",
+      "confidence": 0.9989,
+      "epistemic_uncertainty_mi": 0.0,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        542,
+        698,
+        220,
+        271
+      ]
+    },
+    {
+      "tooth_fdi": 48,
+      "anatomy": "Lower Right 3rd Molar",
+      "condition": "Impacted",
+      "confidence": 0.9996,
+      "epistemic_uncertainty_mi": 0.0,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1952,
+        693,
+        177,
+        270
+      ]
+    },
+    {
+      "tooth_fdi": 47,
+      "anatomy": "Lower Right 2nd Molar",
+      "condition": "Caries",
+      "confidence": 0.7362,
+      "epistemic_uncertainty_mi": 0.0027,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        675,
+        708,
+        243,
+        300
+      ]
+    },
+    {
+      "tooth_fdi": 43,
+      "anatomy": "Lower Right Canine",
+      "condition": "Periapical Lesion",
+      "confidence": 0.8334,
+      "epistemic_uncertainty_mi": 0.0036,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1463,
+        725,
+        98,
+        425
+      ]
+    },
+    {
+      "tooth_fdi": 44,
+      "anatomy": "Lower Right 1st Premolar",
+      "condition": "Deep Caries",
+      "confidence": 0.8555,
+      "epistemic_uncertainty_mi": 0.0074,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1536,
+        753,
+        103,
+        381
+      ]
+    },
+    {
+      "tooth_fdi": 45,
+      "anatomy": "Lower Right 2nd Premolar",
+      "condition": "Deep Caries",
+      "confidence": 0.6144,
+      "epistemic_uncertainty_mi": 0.0057,
+      "risk_level": "Moderate (Review Recommended)",
+      "bbox": [
+        1600,
+        762,
+        122,
+        337
+      ]
+    },
+    {
+      "tooth_fdi": 26,
+      "anatomy": "Upper Left 1st Molar",
+      "condition": "Deep Caries",
+      "confidence": 0.8794,
+      "epistemic_uncertainty_mi": 0.0051,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1701,
+        371,
+        145,
+        290
+      ]
+    },
+    {
+      "tooth_fdi": 27,
+      "anatomy": "Upper Left 2nd Molar",
+      "condition": "Deep Caries",
+      "confidence": 0.518,
+      "epistemic_uncertainty_mi": 0.0025,
+      "risk_level": "High (Manual Verification Required)",
+      "bbox": [
+        779,
+        376,
+        132,
+        317
+      ]
+    },
+    {
+      "tooth_fdi": 46,
+      "anatomy": "Lower Right 1st Molar",
+      "condition": "Caries",
+      "confidence": 0.5712,
+      "epistemic_uncertainty_mi": 0.0022,
+      "risk_level": "Moderate (Review Recommended)",
+      "bbox": [
+        1667,
+        723,
+        237,
+        356
+      ]
+    },
+    {
+      "tooth_fdi": 47,
+      "anatomy": "Lower Right 2nd Molar",
+      "condition": "Impacted",
+      "confidence": 0.7953,
+      "epistemic_uncertainty_mi": 0.0013,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1806,
+        696,
+        237,
+        308
+      ]
+    },
+    {
+      "tooth_fdi": 32,
+      "anatomy": "Lower Left Lateral Incisor",
+      "condition": "Deep Caries",
+      "confidence": 0.9287,
+      "epistemic_uncertainty_mi": 0.002,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1405,
+        724,
+        75,
+        353
+      ]
+    },
+    {
+      "tooth_fdi": 31,
+      "anatomy": "Lower Left Central Incisor",
+      "condition": "Periapical Lesion",
+      "confidence": 0.9619,
+      "epistemic_uncertainty_mi": 0.0016,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1344,
+        720,
+        77,
+        385
+      ]
+    },
+    {
+      "tooth_fdi": 12,
+      "anatomy": "Upper Right Lateral Incisor",
+      "condition": "Periapical Lesion",
+      "confidence": 0.8815,
+      "epistemic_uncertainty_mi": 0.0034,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1288,
+        723,
+        62,
+        387
+      ]
+    }
+  ],
+  "all_findings": [
+    {
+      "tooth_fdi": 48,
+      "anatomy": "Lower Right 3rd Molar",
+      "condition": "Impacted",
+      "confidence": 0.9989,
+      "epistemic_uncertainty_mi": 0.0,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        542,
+        698,
+        220,
+        271
+      ]
+    },
+    {
+      "tooth_fdi": 48,
+      "anatomy": "Lower Right 3rd Molar",
+      "condition": "Impacted",
+      "confidence": 0.9996,
+      "epistemic_uncertainty_mi": 0.0,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1952,
+        693,
+        177,
+        270
+      ]
+    },
+    {
+      "tooth_fdi": 47,
+      "anatomy": "Lower Right 2nd Molar",
+      "condition": "Caries",
+      "confidence": 0.7362,
+      "epistemic_uncertainty_mi": 0.0027,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        675,
+        708,
+        243,
+        300
+      ]
+    },
+    {
+      "tooth_fdi": 43,
+      "anatomy": "Lower Right Canine",
+      "condition": "Periapical Lesion",
+      "confidence": 0.8334,
+      "epistemic_uncertainty_mi": 0.0036,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1463,
+        725,
+        98,
+        425
+      ]
+    },
+    {
+      "tooth_fdi": 44,
+      "anatomy": "Lower Right 1st Premolar",
+      "condition": "Deep Caries",
+      "confidence": 0.8555,
+      "epistemic_uncertainty_mi": 0.0074,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1536,
+        753,
+        103,
+        381
+      ]
+    },
+    {
+      "tooth_fdi": 45,
+      "anatomy": "Lower Right 2nd Premolar",
+      "condition": "Deep Caries",
+      "confidence": 0.6144,
+      "epistemic_uncertainty_mi": 0.0057,
+      "risk_level": "Moderate (Review Recommended)",
+      "bbox": [
+        1600,
+        762,
+        122,
+        337
+      ]
+    },
+    {
+      "tooth_fdi": 26,
+      "anatomy": "Upper Left 1st Molar",
+      "condition": "Deep Caries",
+      "confidence": 0.8794,
+      "epistemic_uncertainty_mi": 0.0051,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1701,
+        371,
+        145,
+        290
+      ]
+    },
+    {
+      "tooth_fdi": 27,
+      "anatomy": "Upper Left 2nd Molar",
+      "condition": "Deep Caries",
+      "confidence": 0.518,
+      "epistemic_uncertainty_mi": 0.0025,
+      "risk_level": "High (Manual Verification Required)",
+      "bbox": [
+        779,
+        376,
+        132,
+        317
+      ]
+    },
+    {
+      "tooth_fdi": 46,
+      "anatomy": "Lower Right 1st Molar",
+      "condition": "Caries",
+      "confidence": 0.5712,
+      "epistemic_uncertainty_mi": 0.0022,
+      "risk_level": "Moderate (Review Recommended)",
+      "bbox": [
+        1667,
+        723,
+        237,
+        356
+      ]
+    },
+    {
+      "tooth_fdi": 47,
+      "anatomy": "Lower Right 2nd Molar",
+      "condition": "Impacted",
+      "confidence": 0.7953,
+      "epistemic_uncertainty_mi": 0.0013,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1806,
+        696,
+        237,
+        308
+      ]
+    },
+    {
+      "tooth_fdi": 32,
+      "anatomy": "Lower Left Lateral Incisor",
+      "condition": "Deep Caries",
+      "confidence": 0.9287,
+      "epistemic_uncertainty_mi": 0.002,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1405,
+        724,
+        75,
+        353
+      ]
+    },
+    {
+      "tooth_fdi": 31,
+      "anatomy": "Lower Left Central Incisor",
+      "condition": "Periapical Lesion",
+      "confidence": 0.9619,
+      "epistemic_uncertainty_mi": 0.0016,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1344,
+        720,
+        77,
+        385
+      ]
+    },
+    {
+      "tooth_fdi": 12,
+      "anatomy": "Upper Right Lateral Incisor",
+      "condition": "Periapical Lesion",
+      "confidence": 0.8815,
+      "epistemic_uncertainty_mi": 0.0034,
+      "risk_level": "Low (High Confidence)",
+      "bbox": [
+        1288,
+        723,
+        62,
+        387
+      ]
+    }
+  ]
+}

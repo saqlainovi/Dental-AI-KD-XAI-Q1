@@ -1,0 +1,73 @@
+project:
+  name: Dental AI Teacher-Student XAI Pipeline
+  primary_goal: Q1-ready novelty pipeline with baseline comparisons
+
+paths:
+  project_root: .
+  coco_root: data/processed/coco
+  mask_root: E:/dental_ai_processed/masks
+  local_checkpoint_root: E:/dental_ai_checkpoints
+
+datasets:
+  dentex:
+    role: in-domain detection/classification benchmark
+    tasks:
+      quadrant: data/processed/coco/dentex/quadrant.json
+      enumeration: data/processed/coco/dentex/enumeration.json
+      disease: data/processed/coco/dentex/disease.json
+  dentalai:
+    role: pixel-level supervision for real segmentation masks
+    splits:
+      train: data/processed/coco/dentalai/train.json
+      valid: data/processed/coco/dentalai/valid.json
+      test: data/processed/coco/dentalai/test.json
+  tufts:
+    role: out-of-domain external validation
+    teeth: data/processed/coco/tufts_teeth.json
+
+completed:
+  data_extraction: true
+  coco_conversion: true
+  baseline_crop_classifiers: true
+  checkpoint_resume: true
+
+baseline_checkpoints:
+  quadrant: E:/dental_ai_checkpoints/v3_quadrant_swin_t_full.pt
+  enumeration: E:/dental_ai_checkpoints/v3_enumeration_swin_t_full.pt
+  disease: E:/dental_ai_checkpoints/v3_disease_swin_t_full.pt
+
+novelty_stages:
+  1_baselines:
+    status: partial
+    deliverable: baseline table for DENTEX tasks and segmentation baselines
+  2_teacher_segmentation:
+    status: pending
+    deliverable: Swin/Mask2Former-style teacher trained with DentalAI masks and DENTEX box/pseudo-mask supervision
+  3_pseudo_masks:
+    status: pending
+    deliverable: DENTEX pseudo-mask artifacts with confidence scores
+  4_student_distillation:
+    status: pending
+    deliverable: lightweight student model trained from teacher outputs
+  5_external_validation:
+    status: pending
+    deliverable: TUFTS out-of-domain results
+  6_xai_uncertainty:
+    status: pending
+    deliverable: image-only XAI plus uncertainty, not bbox-feature-dependent explanations
+
+evaluation:
+  classification:
+    - accuracy
+    - macro_f1
+    - confusion_matrix
+    - roc_auc
+  segmentation:
+    - dice
+    - iou
+    - map50
+    - map75
+  reliability:
+    - calibration_error
+    - mc_dropout_uncertainty
+    - failure_case_panels

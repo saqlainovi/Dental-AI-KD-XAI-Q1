@@ -1,0 +1,2 @@
+selection_rule,val_macro_f1,test_macro_f1,val_images,test_images,class_names,selected_candidates
+weak_recall_balanced,0.8650266050305155,0.72842139841404,105,107,caries|deep_caries|periapical_lesion|impacted,caries=v12_equal@0.62|deep_caries=roi_seed_42@0.84|periapical_lesion=full_ensemble_v9|crop_avg:0.85@0.58|impacted=full_ensemble_v9|crop_avg:0.85@0.78

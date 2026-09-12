@@ -1,0 +1,23 @@
+project_root: .
+
+archives:
+  dentex: DATASET/7812323.zip
+  dentalai: DATASET/dentalai-DatasetNinja.tar
+  tufts: DATASET/tufts-dental-database.zip
+
+raw:
+  dentex: data/raw/dentex
+  dentalai: data/raw/dentalai
+  tufts: data/raw/tufts
+
+processed:
+  coco: data/processed/coco
+
+classes:
+  dentalai:
+    - Caries
+    - Cavity
+    - Crack
+    - Tooth
+  tufts_teeth:
+    - Tooth

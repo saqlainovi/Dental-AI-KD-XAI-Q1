@@ -1,0 +1,8 @@
+metric,value,target,pass
+DENTEX internal-test Dice,0.858768254206798,0.85,True
+DENTEX internal-test IoU,0.7588191659333373,0.75,True
+TUFTS holdout non-empty Dice,0.8886270763785868,0.82,True
+TUFTS holdout non-empty IoU,0.80467882572361,0.72,True
+Disease test macro-F1,0.72842139841404,0.7,True
+DENTEX pixel ROC AUC,0.9851850657399004,0.95,True
+TUFTS holdout pixel ROC AUC,0.9959431448244144,0.95,True

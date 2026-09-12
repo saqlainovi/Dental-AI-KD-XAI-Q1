@@ -1,0 +1,27 @@
+# Datasets and large archives
+DATASET/
+data/
+local_data/
+dental_ai_results/
+recovery_pipeline/
+full_pipeline/
+reports/
+FINAL OUTCOMES/
+DOCUMANTATION/
+*.zip
+*.tar.gz
+*.pth
+*.pt
+*.pkl
+*.h5
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ipynb_checkpoints/
+
+# System files
+.DS_Store
+Thumbs.db
