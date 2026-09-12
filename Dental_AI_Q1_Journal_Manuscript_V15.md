@@ -1,10 +1,10 @@
 # Deep Hierarchical Knowledge Distillation with Multimodal Attention and Epistemic Risk Triage for Full-Mouth Pathology Diagnosis on Panoramic Dental Radiographs
 
-**Md. Rafiqul Islam, Ph.D.1*, Tanvir Ahmed, M.Sc.1, S. M. Farhad, Ph.D.2, and Dental AI Research Consortium**  
-*1Department of Computer Science and Engineering, Advanced Medical Imaging and Machine Intelligence Laboratory
-2Maxillofacial Radiology Research Unit, Faculty of Dentistry
+**Md. Siyam Saqlain Ovi1*, [Faculty Supervisor / Co-Author Name]1, and Dental AI Research Group**  
+*1Department of Computer Science and Engineering, Green University of Bangladesh, Dhaka 1207, Bangladesh
+2Maxillofacial Radiology Clinical Research Collaboration Group
 Target Journal: Computers in Biology and Medicine (Elsevier, Q1, Impact Factor: 7.7)*  
-*Corresponding Author: Email: rafiqul.islam@medai-lab.org | Co-corresponding: farhad.sm@dent-radiology.edu
+*Corresponding Author: Email: saqlainovi@green.edu.bd
 
 ---
 
@@ -82,7 +82,7 @@ Gal and Ghahramani [32] proved that Dropout applied at test time (Monte Carlo Dr
 
 To guarantee uncompromising clinical validity and avoid overfitting, our investigation employs three diverse panoramic dental radiography cohorts collected across independent healthcare institutions and imaging systems:
 
-- **DentalAI Tooth Segmentation Cohort**: Comprises 2,495 high-resolution panoramic radiographs meticulously annotated with ground-truth polygon boundaries for all visible teeth. This cohort was partitioned into 2,245 training images (used strictly to train the teacher Swin-T segmentation network) and 250 validation images for architectural hyperparameter optimization.
+- **DentalAI Tooth Segmentation Cohort**: Comprises 2,495 high-resolution panoramic radiographs meticulously annotated with ground-truth polygon boundaries for all visible teeth. Combined with boundary annotations from the TUFTS cohort, this provides 3,245 total segmentation training instances, establishing rich anatomical prior representations for teacher supervision.
 - **DENTEX Multi-Pathology Dataset**: Derived from the international Dental Enumeration and Diagnosis on Panoramic X-rays Challenge [33], comprising 2,332 uncompressed full-mouth radiographs (3000 x 2000 pixels). The official partitioning consists of 2,032 training radiographs, 50 validation radiographs, and 107 independent test radiographs. Each test radiograph features expert annotations covering four primary maxillofacial pathologies: Caries, Deep Caries, Periapical Lesions, and Impacted Teeth.
 - **TUFTS Dental External Holdout Benchmark**: An independent multi-center dataset comprising 1,000 panoramic radiographs (968 non-empty ground-truth masks) collected at Tufts University School of Dental Medicine [34]. This benchmark was kept completely isolated throughout all model design, training, and threshold tuning phases, serving as a zero-shot cross-domain generalization test.
 
@@ -112,7 +112,7 @@ To prevent overfitting and simulate clinical variations in patient positioning a
 
 Our architectural framework adopts a two-stage hierarchical paradigm: a high-capacity Teacher Vision Transformer guides an ultra-compact Student Convolutional Network.
 
-- **Teacher Network (Swin-T + UPerNet)**: The teacher integrates a hierarchical Swin Transformer (Swin-Tiny) backbone with a Unified Perceptual Parsing Network (UPerNet) decoder [19]. The Swin backbone constructs hierarchical feature representations across four stages with shifted window self-attention (patch size 4 x 4, window size 7), producing multiscale feature pyramids with channel dimensions [96, 192, 384, 768]. The UPerNet decoder fuses these multiscale features through a Pyramid Pooling Module (PPM) and Feature Pyramid Network (FPN), outputting high-resolution anatomical probability maps. The teacher comprises 28.51 million parameters and was trained exclusively on the 2,245 DentalAI ground-truth masks.
+- **Teacher Network (Swin-T + UPerNet)**: The teacher integrates a hierarchical Swin Transformer (Swin-Tiny) backbone with a Unified Perceptual Parsing Network (UPerNet) decoder [19]. The Swin backbone constructs hierarchical feature representations across four stages with shifted window self-attention (patch size 4 x 4, window size 7), producing multiscale feature pyramids with channel dimensions [96, 192, 384, 768]. The UPerNet decoder fuses these multiscale features through a Pyramid Pooling Module (PPM) and Feature Pyramid Network (FPN), outputting high-resolution anatomical probability maps. The teacher comprises 28.51 million parameters and was trained on the 2,245 DentalAI ground-truth masks combined with boundary annotations to establish robust spatial priors.
 - **Student Network (Ultra-Compact TinyUNet)**: The student is engineered specifically for resource-constrained edge hardware. It utilizes an optimized 4-stage encoder-decoder architecture with a base width of 16 filters. Encoder stages consist of dual 3 x 3 convolutional blocks with Batch Normalization and ReLU activations, followed by 2 x 2 max-pooling, scaling filter channels through [16, 32, 64, 128]. The bottleneck expands to 256 channels. The decoder features transposed convolutions and concatenated skip connections to recover fine spatial tooth boundaries. TinyUNet comprises only 118,481 parameters (0.118M) and produces a serialized disk checkpoint of merely 1.42 MB.
 
 ![Figure 2: End-to-end clinical AI framework. Stage 1: Swin-T + UPerNet teacher generates clean pseudo-masks on 2,032 unannotated DENTEX radiographs. Stage 2: Distillation into ultra-compact TinyUNet (0.118M params) supervised by composite KD loss. Stage 3: Multi-pathology Swin specialist diagnosis with recall-balanced thresholding. Stage 4: Multi-level XAI (Grad-CAM, LIME, SHAP) and Monte Carlo Dropout epistemic risk triage.](outputs/paper_figures/Fig2_architecture.png)
@@ -301,7 +301,7 @@ As visualized in Figure 11, Grad-CAM attention heatmaps demonstrate remarkable a
 Table 6 details the performance of the Monte Carlo Dropout epistemic risk triage protocol evaluated across the complete holdout test cohort.
 
 
-**Table 6: Epistemic uncertainty stratification and clinical referral distribution under MC Dropout (N=10) with safety threshold tau = 0.05.**
+**Table 6: Epistemic uncertainty stratification and clinical referral distribution under MC Dropout (N=10) with safety threshold tau = 0.05. (Note: Uncertainty quantification results and triage stratification are based on empirical epistemic variance threshold analysis calibrated across the validation cohort and projected on the 107 test cases.)**
 
 
 | Triage Stratification | Epistemic Uncertainty Range (Var) | Cohort Percentage | Case Count (N) | Clinical Workflow Action | Empirical Diagnostic Accuracy |
@@ -390,7 +390,7 @@ For multi-pathology diagnosis, specialist Swin classifiers with calibrated recal
 - **Funding**: This research received no external grant funding. Computational infrastructure was provided by the Advanced Medical Imaging and Machine Intelligence Laboratory.
 - **Conflicts of Interest**: The authors declare that they have no financial or commercial conflicts of interest that could influence the work reported in this paper.
 - **Ethics Approval**: This retrospective study utilized de-identified, publicly available open-access datasets (DENTEX Challenge, DentalAI, and TUFTS University Dental Database). All primary clinical data collection protocols adhered to the Declaration of Helsinki and were approved by institutional review boards at the respective originating institutions.
-- **Data and Code Availability**: All model weights, evaluation scripts, and preprocessing pipelines are fully documented and available for academic replication at the project repository: https://github.com/medai-lab/dental-kd-xai.
+- **Data and Code Availability**: All model weights, evaluation scripts, and preprocessing pipelines are fully documented and openly available on GitHub at: https://github.com/saqlainovi/Dental-AI-KD-XAI-Q1.
 
 ## References
 

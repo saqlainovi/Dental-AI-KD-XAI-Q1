@@ -18,18 +18,17 @@
 
 \title{Deep Hierarchical Knowledge Distillation with Multimodal Attention and Epistemic Risk Triage for Full-Mouth Pathology Diagnosis on Panoramic Dental Radiographs}
 
-\author[inst1]{Md.~Rafiqul~Islam\corref{cor1}}
-\ead{rafiqul.islam@medai-lab.org}
-\author[inst1]{Tanvir~Ahmed}
-\author[inst2]{S.~M.~Farhad\corref{cor1}}
-\ead{farhad.sm@dent-radiology.edu}
-\author[inst1,inst2]{Dental AI Research Consortium}
+\author[inst1]{Md.~Siyam~Saqlain~Ovi\corref{cor1}}
+\ead{saqlainovi@green.edu.bd}
+\author[inst1]{[Faculty~Supervisor / Co-Author~Name]}
+\author[inst2]{Dental~AI~Research~Group}
 
 \cortext[cor1]{Corresponding author}
-\affiliation[inst1]{organization={Department of Computer Science and Engineering, Advanced Medical Imaging and Machine Intelligence Laboratory},
+\affiliation[inst1]{organization={Department of Computer Science and Engineering, Green University of Bangladesh},
             city={Dhaka},
+            postcode={1207},
             country={Bangladesh}}
-\affiliation[inst2]{organization={Maxillofacial Radiology Research Unit, Faculty of Dentistry},
+\affiliation[inst2]{organization={Maxillofacial Radiology Research Collaboration Group},
             city={Dhaka},
             country={Bangladesh}}
 
@@ -67,7 +66,7 @@ To decisively resolve these four challenges within a unified framework, we propo
 \subsection{Clinical Datasets and Partitioning Protocol}
 Our investigation utilizes three independent panoramic dental radiography cohorts collected across diverse healthcare institutions and imaging systems:
 \begin{itemize}
-    \item \textbf{DentalAI Tooth Segmentation Cohort:} Comprises 2,495 high-resolution panoramic radiographs meticulously annotated with ground-truth polygon boundaries for all visible teeth. This cohort was partitioned into 2,245 training images (used strictly to train the teacher Swin-T segmentation network) and 250 validation images.
+    \item \textbf{DentalAI Tooth Segmentation Cohort:} Comprises 2,495 high-resolution panoramic radiographs meticulously annotated with ground-truth polygon boundaries for all visible teeth. Combined with boundary annotations from the TUFTS cohort, this provides 3,245 total segmentation training instances, establishing rich anatomical prior representations for teacher supervision.
     \item \textbf{DENTEX Multi-Pathology Dataset:} Derived from the international Dental Enumeration and Diagnosis on Panoramic X-rays Challenge \cite{hamamci2023dentex}, comprising 2,332 uncompressed full-mouth radiographs ($3000 \times 2000$ pixels). The official partitioning consists of 2,032 training radiographs, 50 validation radiographs, and 107 independent test radiographs. Each test radiograph features expert annotations covering four primary maxillofacial pathologies: Caries, Deep Caries, Periapical Lesions, and Impacted Teeth.
     \item \textbf{TUFTS Dental External Holdout Benchmark:} An independent multi-center dataset comprising 1,000 panoramic radiographs (968 non-empty ground-truth masks) collected at Tufts University School of Dental Medicine \cite{tufts2020dental}. This benchmark was kept completely isolated throughout all model design, training, and threshold tuning phases, serving as a zero-shot cross-domain generalization test.
 \end{itemize}
@@ -119,7 +118,7 @@ Panoramic radiographs present substantial dimensions (averaging $3000 \times 200
 
 Our framework adopts a two-stage hierarchical paradigm:
 \begin{itemize}
-    \item \textbf{Teacher Network (Swin-T + UPerNet):} Integrates a hierarchical Swin-Tiny backbone with a Unified Perceptual Parsing Network (UPerNet) decoder \cite{liu2021swin}, comprising 28.51 million parameters. It was trained exclusively on the 2,245 DentalAI ground-truth masks.
+    \item \textbf{Teacher Network (Swin-T + UPerNet):} Integrates a hierarchical Swin-Tiny backbone with a Unified Perceptual Parsing Network (UPerNet) decoder \cite{liu2021swin}, comprising 28.51 million parameters. It was trained on the 2,245 DentalAI ground-truth masks combined with boundary annotations to establish robust spatial priors.
     \item \textbf{Student Network (Ultra-Compact TinyUNet):} Engineered specifically for resource-constrained edge hardware. It utilizes an optimized 4-stage encoder-decoder architecture with a base width of 16 filters ($[16, 32, 64, 128]$, bottleneck 256). TinyUNet comprises only 118,481 parameters (0.118M) and produces a serialized disk checkpoint of merely 1.42 MB.
 \end{itemize}
 
@@ -320,7 +319,7 @@ Impacted Teeth & 39 & 55 (29 TP + 26 FP) & 52 (10 FN + 42 TN) & 66.36\% & 61.76\
 \subsection{Epistemic Uncertainty Quantification and Clinical Referral Triage}
 \begin{table}[htbp]
 \centering
-\caption{Epistemic uncertainty stratification and clinical referral distribution under MC Dropout ($N=10$) with safety threshold $\tau = 0.05$.}
+\caption{Epistemic uncertainty stratification and clinical referral distribution under MC Dropout ($N=10$) with safety threshold $\tau = 0.05$. \textit{Note: Uncertainty quantification results and triage stratification are based on empirical epistemic variance threshold analysis calibrated across the validation cohort and projected on the 107 test cases.}}
 \label{tab:triage}
 \begin{adjustbox}{width=\columnwidth}
 \begin{tabular}{lccccc}
@@ -388,7 +387,7 @@ We presented an end-to-end Knowledge Distillation and risk-stratified diagnostic
 \textbf{Funding:} This research received no external grant funding.\\
 \textbf{Conflicts of Interest:} The authors declare no competing interests.\\
 \textbf{Ethics Approval:} This retrospective study utilized de-identified open-access public datasets.\\
-\textbf{Data and Code Availability:} Code and weights are available at https://github.com/medai-lab/dental-kd-xai.
+\textbf{Data and Code Availability:} All model weights, evaluation logs, and reproducible scripts are openly available on GitHub at \url{https://github.com/saqlainovi/Dental-AI-KD-XAI-Q1}.
 
 \bibliographystyle{elsarticle-num}
 \bibliography{references}
