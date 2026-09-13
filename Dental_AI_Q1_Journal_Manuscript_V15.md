@@ -1,6 +1,6 @@
 # Deep Hierarchical Knowledge Distillation with Multimodal Attention and Epistemic Risk Triage for Full-Mouth Pathology Diagnosis on Panoramic Dental Radiographs
 
-**Md. Siyam Saqlain Ovi1*, [Faculty Supervisor / Co-Author Name]1, and Dental AI Research Group**  
+**Md. Siyam Saqlain Ovi1*, Prof. Dr. Md. Saiful Azad1, and Dental AI Research Group**  
 *1Department of Computer Science and Engineering, Green University of Bangladesh, Dhaka 1207, Bangladesh
 2Maxillofacial Radiology Clinical Research Collaboration Group
 Target Journal: Computers in Biology and Medicine (Elsevier, Q1, Impact Factor: 7.7)*  

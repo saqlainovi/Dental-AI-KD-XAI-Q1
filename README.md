@@ -69,6 +69,25 @@ This repository houses the official implementation, trained checkpoints, evaluat
 
 ---
 
+### 5. Training Timeline & Edge Hardware Telemetry (RTX 3060 6GB)
+<p align="center">
+  <img src="outputs/paper_figures/Fig21_training_timeline.png" width="48%" />
+  <img src="outputs/paper_figures/Fig22_gpu_telemetry_heatmap.png" width="48%" />
+</p>
+
+* **Training Duration:** 50 epochs completed in **3.55 hours** (mean 255.47s/epoch).
+* **Green AI & Edge Feasibility:** Average power draw **37.45W** (55W TDP budget), stable **676.5 MB VRAM**, core temp **46.37°C**.
+
+---
+
+### 6. Per-Class Confusion Matrices & Generalization Spread
+<p align="center">
+  <img src="outputs/paper_figures/Fig19_confusion_matrix_heatmap.png" width="58%" />
+  <img src="outputs/paper_figures/Fig20_dice_distribution_violin.png" width="38%" />
+</p>
+
+---
+
 ## 🔍 Explainable AI (XAI) Suite
 
 <p align="center">
@@ -128,9 +147,9 @@ print(df_test)
 ## 📝 Citation
 
 ```bibtex
-@article{islam2026deep,
+@article{ovi2026deep,
   title={Deep Hierarchical Knowledge Distillation with Multimodal Attention and Epistemic Risk Triage for Full-Mouth Pathology Diagnosis on Panoramic Dental Radiographs},
-  author={Islam, Md. Rafiqul and Ahmed, Tanvir and Farhad, S. M. and {Dental AI Research Consortium}},
+  author={Ovi, Md. Siyam Saqlain and Azad, Md. Saiful and {Dental AI Research Group}},
   journal={Computers in Biology and Medicine},
   year={2026}
 }

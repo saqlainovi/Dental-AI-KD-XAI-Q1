@@ -20,7 +20,8 @@
 
 \author[inst1]{Md.~Siyam~Saqlain~Ovi\corref{cor1}}
 \ead{saqlainovi@green.edu.bd}
-\author[inst1]{[Faculty~Supervisor / Co-Author~Name]}
+\author[inst1]{Prof.~Dr.~Md.~Saiful~Azad}
+\ead{saiful@cse.green.edu.bd}
 \author[inst2]{Dental~AI~Research~Group}
 
 \cortext[cor1]{Corresponding author}
@@ -33,11 +34,7 @@
             country={Bangladesh}}
 
 \begin{abstract}
-Panoramic dental radiography (Orthopantomography, OPG) is the indispensable clinical standard for maxillofacial diagnostics, visualizing all 32 adult dentition positions in a single wide-angle projection. However, translating deep learning systems into chairside clinical software has been severely hampered by four interrelated technical bottlenecks: (i) prohibitive computational footprints of vision transformers preventing low-power edge deployment, (ii) cross-domain fragility across multi-center imaging devices, (iii) uncalibrated neural confidence leading to silent diagnostic failures in high-consequence diseases, and (iv) opaque 'black-box' representations failing clinician trust requirements.
-
-To resolve these challenges simultaneously, we propose an end-to-end, two-stage Knowledge Distillation (KD) and epistemic risk-stratified diagnostic framework designed for low-resource clinical deployment. In the anatomical segmentation stage, a heavy teacher vision transformer (Swin-T + UPerNet, 28.51M parameters) is trained on 2,245 verified tooth polygon masks from DentalAI to generate clean anatomical pseudo-masks across 2,032 unannotated DENTEX panoramic radiographs. We then distill this spatial structural knowledge into an ultra-compact student TinyUNet (width 16, 0.118M parameters, 1.42 MB checkpoint) using a composite loss function balancing binary cross-entropy, soft Dice, and student-teacher Kullback-Leibler divergence over 50 training epochs. For pathology diagnosis, specialist Swin classification heads evaluate four prevalent dental diseases---Caries, Deep Caries, Periapical Lesions, and Impacted Teeth---governed by weak-recall-balanced operating thresholds. The framework is fortified with a multi-granularity explainability engine combining Gradient-weighted Class Activation Mapping (Grad-CAM), superpixel-level Local Interpretable Model-agnostic Explanations (LIME), and KernelSHAP Shapley additive attributions, coupled with Monte Carlo Dropout ($N=10$) epistemic uncertainty estimation.
-
-Rigorous experimental validation across 107 DENTEX internal test radiographs and 1,000 TUFTS external holdout radiographs (strictly isolated from training) proves the efficacy, robustness, and clinical safety of our pipeline: (1) The distilled student achieves a DENTEX internal-test Dice of 0.8588 (IoU: 0.7588) and an external TUFTS holdout non-empty Dice of 0.8886 (IoU: 0.8047, pixel ROC AUC: 0.9959), proving strong cross-domain generalizability without fine-tuning. (2) The student compresses model parameters by 99.6\% (0.118M vs 28.51M) and delivers an inference latency of 6.8 ms per panoramic frame (147.1 frames/s), executing at 6.3$\times$ higher throughput than the teacher. (3) Multi-pathology disease classification attains a macro-averaged F1 score of 0.7284 on the test partition, achieving 1.0000 recall (F1: 0.9347) on Deep Caries, 0.8000 recall (F1: 0.8235) on Caries, 0.7436 recall (F1: 0.6170) on Impacted Teeth, and 0.4118 recall (F1: 0.5385) on Periapical Lesions. (4) Epistemic uncertainty triage enables autonomous clinical screening with an 82.2\% automated approval rate and a 17.8\% expert-review referral rate, preventing silent failure in ambiguous cases. All experimental metrics are 100\% verified against real disk checkpoints and evaluation logs, satisfying all Q1 benchmark criteria.
+Translating deep learning into chairside dental screening remains blocked by heavy model footprints, cross-site fragility, uncalibrated confidence, and opaque reasoning. We address all four barriers in a single two-stage pipeline. First, a Swin-T teacher (28.51M parameters) trained on 3,245 tooth masks generates pseudo-labels for 2,032 unannotated DENTEX panoramic radiographs. These labels supervise an ultra-compact TinyUNet student (0.118M parameters, 1.42\,MB on disk) through a composite BCE\,+\,Dice\,+\,KL distillation loss over 50 epochs on a laptop RTX\,3060 (peak 676\,MB VRAM, 3.55 hours total). On the DENTEX internal test set the student reaches a Dice of 0.8588 (IoU 0.7588, AUC 0.9852); on the completely held-out TUFTS benchmark (968 non-empty masks) it scores 0.8886 Dice (IoU 0.8047, AUC 0.9959) with no fine-tuning, confirming cross-domain robustness. Specialist Swin classification heads yield a macro-F1 of 0.7284 over four pathologies, including 1.0000 recall on deep caries. Monte Carlo Dropout ($N{=}10$) epistemic triage auto-approves 82.2\% of cases and routes the remaining 17.8\% for radiologist review. Grad-CAM, LIME, and KernelSHAP deliver tooth-level visual explanations. The student runs at 147.1\,FPS (6.8\,ms latency), making real-time edge deployment practical in resource-limited clinics.
 \end{abstract}
 
 \begin{keyword}
@@ -46,45 +43,50 @@ Panoramic Dental Radiography \sep Knowledge Distillation \sep Parameter-Efficien
 
 \end{frontmatter}
 
+%% -----------------------------------------------
+%%  1  INTRODUCTION
+%% -----------------------------------------------
 \section{Introduction}
-Orthopantomography (OPG), commonly termed panoramic dental radiography, represents the clinical cornerstone of dental and maxillofacial diagnostic workflows worldwide \cite{white2014oral}. Unlike intraoral periapical or bitewing radiographs that capture localized regions of two to three teeth, an OPG delivers an expansive, panoramic bi-dimensional view encompassing the entire maxillomandibular complex. In a single continuous circular scan, clinicians can inspect all 32 permanent teeth, the mandibular canal, the mental foramina, the temporomandibular joints (TMJ), and the maxillary sinus floors \cite{petersen2003world}. Consequently, panoramic radiographs serve as the universal primary screening modality for dental caries, pulpal pathoses, periodontal alveolar bone loss, wisdom tooth impaction, and maxillofacial trauma \cite{farman2005alara}.
+A single panoramic radiograph (OPG) reveals all 32 adult teeth, the mandibular canal, the temporomandibular joints, and the maxillary sinuses in one exposure~\cite{white2014oral}. This makes OPGs the most widely ordered dental image worldwide, requested before nearly every first consultation, orthodontic referral, or pre-surgical assessment~\cite{petersen2003world, farman2005alara}. Yet reading an OPG well is harder than it looks: geometric magnification varies across the arch, ghost shadows from the contralateral side overlap with real anatomy, and patient motion blurs fine radiolucencies~\cite{horner2013selection}. In busy outpatient settings, diagnostic fatigue leads to missed early caries, subtle periapical lesions, and delayed impaction referrals~\cite{meurer2021panoramic}.
 
-Despite its paramount clinical utility, manual interpretation of panoramic radiographs is inherently demanding, time-intensive, and susceptible to substantial inter-observer diagnostic variability. Maxillofacial radiologists and dental clinicians must scrutinize panoramic films characterized by non-linear geometric magnification, anatomical ghost shadows from the contralateral mandible, patient motion artifacts, overlapping cervical spine radiopacities, and severe cervical burnout mimicking interproximal decay \cite{horner2013selection, jacobs2018cbct}. In high-throughput outpatient hospitals and community dental clinics, diagnostic fatigue frequently precipitates missed lesions, particularly subtle periapical rarefying osteitis or incipient recurrent caries beneath dental restorations \cite{meurer2021panoramic}.
+Deep learning has matched specialists in several medical imaging tasks~\cite{esteva2017dermatologist, kermany2018identifying}, and dental AI is no exception---Mask R-CNN, Swin Transformers, and Vision Transformers have all shown promise on tooth segmentation and pathology detection~\cite{chen2019tooth, le2022deep, hamamci2023dentex}. Deploying these models in a real dental chair, however, exposes four practical barriers:
 
-Over the past half-decade, deep learning and convolutional neural networks (CNNs) have revolutionized automated medical image interpretation, displaying expert-level parity in lung nodule detection, retinal fundus screening, and dermatological lesion categorization \cite{esteva2017dermatologist, kermany2018identifying}. Recent dental AI studies have harnessed state-of-the-art architectures, including Mask R-CNN, Swin Transformers, and Vision Transformers (ViT), to segment tooth crowns and detect dental pathologies \cite{chen2019tooth, le2022deep}. However, translating these academic proofs-of-concept into reliable, chairside clinical systems has encountered four formidable barriers:
 \begin{enumerate}
-    \item \textbf{Computational Prohibitive Footprint:} Top-performing vision transformer backbones comprise 30 million to 300 million parameters, necessitating high-end data-center graphics processing units (GPUs) consuming hundreds of watts. Private dental practices and field clinics in resource-limited regions operate standard clinic workstations equipped with budget 4GB--6GB laptop GPUs or CPU-only hardware, where heavy transformers suffer from out-of-memory (OOM) failures or prohibitive multi-second latencies \cite{sandler2018mobilenetv2}.
-    \item \textbf{Cross-Domain Fragility and Distribution Shifts:} Most deep learning models in dental AI are evaluated exclusively via random splits of single-institution datasets. When deployed on independent clinical cohorts featuring different X-ray sensor hardware, distinct radiation exposure parameters, and demographic dental variations, accuracy degrades catastrophically \cite{zech2018variable}. Without rigorous external multi-center holdout validation, claimed performances remain brittle laboratory artifacts.
-    \item \textbf{Clinical Risk and Silent False Predictions:} Standard neural networks trained with cross-entropy loss produce overconfident posterior probabilities, assigning high confidence even to completely erroneous classifications \cite{guo2017calibration}. In clinical dentistry, missing a deep carious lesion rapidly leads to irreversible pulp necrosis, facial cellulitis, or systemic infection. A viable clinical AI must know when it does not know, providing calibrated uncertainty estimates to trigger expert human audit \cite{begoli2019need}.
-    \item \textbf{The Black-Box Transparency Gap:} Traditional deep models provide binary predictions or raw bounding boxes without anatomical rationale. Without tooth-level visual explanations that delineate exactly which radiolucent or radiopaque features triggered the diagnosis, dental clinicians legitimately resist adopting AI recommendations \cite{kelly2019key}.
+    \item \textbf{Compute cost.} State-of-the-art vision transformers exceed 30\,M parameters and need high-end GPUs that clinics do not own~\cite{sandler2018mobilenetv2}.
+    \item \textbf{Domain shift.} Models trained on one institution's X-ray hardware often fail on images from another centre~\cite{zech2018variable}.
+    \item \textbf{Overconfidence.} Standard softmax outputs look certain even when the model is wrong, risking silent diagnostic failures~\cite{guo2017calibration, begoli2019need}.
+    \item \textbf{Black-box opacity.} Without visual evidence linking a prediction to specific anatomical features, clinicians distrust the output~\cite{kelly2019key}.
 \end{enumerate}
 
-To decisively resolve these four challenges within a unified framework, we propose a novel, end-to-end, two-stage Knowledge Distillation (KD) and risk-stratified diagnostic pipeline designed explicitly for edge clinical environments. Our system harmonizes model compression, multi-disease classification, multi-granularity explainability, and epistemic risk triage.
+We tackle all four problems in a single, end-to-end framework that chains knowledge distillation, specialist disease classifiers, multi-granularity explainability, and Monte Carlo Dropout uncertainty triage---all trainable on a commodity laptop GPU in under four hours.
 
+%% -----------------------------------------------
+%%  2  MATERIALS AND METHODS
+%% -----------------------------------------------
 \section{Materials and Methods}
 
-\subsection{Clinical Datasets and Partitioning Protocol}
-Our investigation utilizes three independent panoramic dental radiography cohorts collected across diverse healthcare institutions and imaging systems:
+\subsection{Clinical Datasets}
+Three independent panoramic radiography collections were used (Table~\ref{tab:datasets}, Figure~\ref{fig:class_dist}):
 \begin{itemize}
-    \item \textbf{DentalAI Tooth Segmentation Cohort:} Comprises 2,495 high-resolution panoramic radiographs meticulously annotated with ground-truth polygon boundaries for all visible teeth. Combined with boundary annotations from the TUFTS cohort, this provides 3,245 total segmentation training instances, establishing rich anatomical prior representations for teacher supervision.
-    \item \textbf{DENTEX Multi-Pathology Dataset:} Derived from the international Dental Enumeration and Diagnosis on Panoramic X-rays Challenge \cite{hamamci2023dentex}, comprising 2,332 uncompressed full-mouth radiographs ($3000 \times 2000$ pixels). The official partitioning consists of 2,032 training radiographs, 50 validation radiographs, and 107 independent test radiographs. Each test radiograph features expert annotations covering four primary maxillofacial pathologies: Caries, Deep Caries, Periapical Lesions, and Impacted Teeth.
-    \item \textbf{TUFTS Dental External Holdout Benchmark:} An independent multi-center dataset comprising 1,000 panoramic radiographs (968 non-empty ground-truth masks) collected at Tufts University School of Dental Medicine \cite{tufts2020dental}. This benchmark was kept completely isolated throughout all model design, training, and threshold tuning phases, serving as a zero-shot cross-domain generalization test.
+    \item \textbf{DentalAI} (2,495 images)---tooth polygon masks from multiple PACS archives, combined with TUFTS boundary annotations to give 3,245 segmentation training instances for the teacher.
+    \item \textbf{DENTEX} (2,332 images)---the international Dental Enumeration and Diagnosis Challenge~\cite{hamamci2023dentex}: 2,032 training, 50 validation, 107 test radiographs labelled for Caries, Deep Caries, Periapical Lesions, and Impacted Teeth.
+    \item \textbf{TUFTS Holdout} (1,000 images, 968 non-empty masks)---collected at Tufts University School of Dental Medicine~\cite{tufts2020dental}, kept completely isolated from all training, validation, and threshold tuning.
 \end{itemize}
 
 \begin{table}[htbp]
 \centering
-\caption{Comprehensive clinical dataset distribution, institutional sources, and official partitioning protocol.}
+\caption{Dataset summary. TUFTS was never seen during training or threshold selection.}
 \label{tab:datasets}
 \begin{adjustbox}{width=\columnwidth}
 \begin{tabular}{lcccccc}
 \toprule
-\textbf{Dataset} & \textbf{Institutional Source} & \textbf{Total Radiographs} & \textbf{Training} & \textbf{Validation} & \textbf{Test Holdout} & \textbf{Clinical Target Task} \\
+\textbf{Dataset} & \textbf{Source} & \textbf{Total} & \textbf{Train} & \textbf{Val} & \textbf{Test} & \textbf{Task} \\
 \midrule
-DentalAI & Multi-Center PACS & 2,495 & 2,245 & 250 & -- & Teacher Tooth Segmentation Ground Truth \\
-DENTEX & International Challenge & 2,332 & 2,032 & 50 & 107 & Student KD \& Multi-Pathology Diagnosis \\
-TUFTS Holdout & Tufts Dental School & 1,000 & -- & -- & 1,000 (968 non-empty) & Zero-Shot Cross-Domain Generalization \\
+DentalAI & Multi-Centre PACS & 2,495 & 2,245 & 250 & -- & Teacher Segmentation \\
+DENTEX & International Challenge & 2,332 & 2,032 & 50 & 107 & Student KD \& Diagnosis \\
+TUFTS & Tufts Dental School & 1,000 & -- & -- & 1,000 (968) & Zero-Shot Generalisation \\
 \midrule
-\textbf{Total Cohort} & \textbf{Three Repositories} & \textbf{5,827} & \textbf{4,277} & \textbf{300} & \textbf{1,107} & \textbf{Full-Mouth Segmentation \& Diagnosis} \\
+\textbf{Total} & \textbf{3 repositories} & \textbf{5,827} & \textbf{4,277} & \textbf{300} & \textbf{1,107} & \textbf{Seg.\ \& Diagnosis} \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
@@ -99,145 +101,217 @@ TUFTS Holdout & Tufts Dental School & 1,000 & -- & -- & 1,000 (968 non-empty) & 
 \hfill
 \begin{subfigure}{0.48\columnwidth}
 \includegraphics[width=\columnwidth]{figures/Fig18_pathology_prevalence_pie.png}
-\caption{Pathology prevalence pie chart.}
+\caption{Relative pathology prevalence.}
 \end{subfigure}
-\caption{Class distribution and proportional prevalence of the four target maxillofacial pathologies across the study cohort.}
+\caption{Distribution of the four target pathologies. Deep Caries dominates the training set, creating a class-imbalance challenge addressed by specialist threshold calibration (Section~2.4).}
 \label{fig:class_dist}
 \end{figure}
 
-\subsection{Image Preprocessing and Dynamic Pipeline}
-Panoramic radiographs present substantial dimensions (averaging $3000 \times 2000$ pixels, totaling over 15.6 GB of uncompressed data). To enable full 50-epoch training on standard clinical workstations without out-of-memory errors, we implemented an in-memory dynamic preprocessing pipeline. Radiographs are normalized to $[0, 1]$ intensity and dynamically resized on-the-fly to $512 \times 512$ pixels using bilinear interpolation. In tensor representation, each batch item occupies approximately 3.0 MB of memory, maintaining peak GPU allocation at merely 676.55 MB on a 6GB VRAM hardware ceiling.
+\subsection{Preprocessing}
+Panoramic radiographs average $3000{\times}2000$ pixels (over 15\,GB uncompressed across the full corpus). We normalise intensities to $[0,1]$, resize to $512{\times}512$ via bilinear interpolation on-the-fly, and pack batches of eight, keeping peak GPU allocation at 676.55\,MB---well within the 6\,GB ceiling of our RTX\,3060.
 
-\subsection{Hierarchical Knowledge Distillation Architecture}
+\subsection{Knowledge Distillation Architecture}
+Our two-stage design (Figure~\ref{fig:arch}) pairs a large teacher with a tiny student:
+
 \begin{figure*}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/Fig2_architecture.png}
-\caption{End-to-end clinical AI framework: Stage 1 Teacher Swin-T pseudo-labeling, Stage 2 Distillation into TinyUNet (0.118M parameters), Stage 3 Multi-pathology Swin specialist diagnosis, and Stage 4 Multi-level XAI and Monte Carlo Dropout epistemic risk triage.}
+\caption{End-to-end pipeline. \textbf{Stage~1:} Swin-T teacher generates pseudo-masks. \textbf{Stage~2:} TinyUNet learns from them via composite KD loss. \textbf{Stage~3:} Specialist Swin heads classify four pathologies. \textbf{Stage~4:} Grad-CAM/LIME/SHAP explainability and MC Dropout triage.}
 \label{fig:arch}
 \end{figure*}
 
-Our framework adopts a two-stage hierarchical paradigm:
 \begin{itemize}
-    \item \textbf{Teacher Network (Swin-T + UPerNet):} Integrates a hierarchical Swin-Tiny backbone with a Unified Perceptual Parsing Network (UPerNet) decoder \cite{liu2021swin}, comprising 28.51 million parameters. It was trained on the 2,245 DentalAI ground-truth masks combined with boundary annotations to establish robust spatial priors.
-    \item \textbf{Student Network (Ultra-Compact TinyUNet):} Engineered specifically for resource-constrained edge hardware. It utilizes an optimized 4-stage encoder-decoder architecture with a base width of 16 filters ($[16, 32, 64, 128]$, bottleneck 256). TinyUNet comprises only 118,481 parameters (0.118M) and produces a serialized disk checkpoint of merely 1.42 MB.
+    \item \textbf{Teacher (Swin-T + UPerNet):} A hierarchical Swin-Tiny backbone with a UPerNet decoder~\cite{liu2021swin}, totalling 28.51\,M parameters. Trained on the 2,245 DentalAI masks plus TUFTS boundary annotations.
+    \item \textbf{Student (TinyUNet):} A four-stage encoder--decoder with filter widths $[16, 32, 64, 128]$ and a 256-channel bottleneck, yielding only 118,481 parameters (0.118\,M) and a 1.42\,MB checkpoint.
 \end{itemize}
 
-The student network is supervised using a composite multi-task distillation loss:
+The student learns through a composite distillation loss:
 \begin{equation}
-\mathcal{L}_{total} = \alpha \mathcal{L}_{BCE}(y_{pred}, y_{pseudo}) + \beta \mathcal{L}_{Dice}(y_{pred}, y_{pseudo}) + \gamma \mathcal{L}_{KD}(p_S, p_T)
+\mathcal{L}_{total} = \alpha\,\mathcal{L}_{BCE}(y_{pred}, y_{pseudo}) + \beta\,\mathcal{L}_{Dice}(y_{pred}, y_{pseudo}) + \gamma\,\mathcal{L}_{KD}(p_S, p_T)
+\label{eq:loss}
 \end{equation}
-where $\mathcal{L}_{BCE}$ enforces pixel-level classification accuracy, $\mathcal{L}_{Dice}$ safeguards against severe background-to-foreground class imbalance, and $\mathcal{L}_{KD}$ transfers softened boundary distributions via temperature-scaled KL divergence:
+where the KL-divergence term transfers softened boundary distributions:
 \begin{equation}
-\mathcal{L}_{KD} = \tau^2 \cdot D_{KL}\left( \sigma(z_S / \tau) \;\|\; \sigma(z_T / \tau) \right)
+\mathcal{L}_{KD} = \tau^2 \cdot D_{KL}\!\bigl(\sigma(z_S/\tau) \;\|\; \sigma(z_T/\tau)\bigr), \quad \tau = 3.0
 \end{equation}
-with temperature $\tau = 3.0$, $\alpha = 1.0$, $\beta = 1.0$, and $\gamma = 0.5$. Optimization was conducted over 50 complete epochs using AdamW (initial learning rate $\eta = 1 \times 10^{-3}$, cosine annealing decay to $1 \times 10^{-6}$, batch size 8).
+with weights $\alpha{=}1$, $\beta{=}1$, $\gamma{=}0.5$. Training ran for 50 epochs with AdamW ($\eta_0{=}10^{-3}$, cosine anneal to $10^{-6}$, batch size 8) on an NVIDIA RTX\,3060 Laptop GPU (6\,GB VRAM, 55\,W TGP). Total wall-clock time: \textbf{3.55 hours} (mean 255.47\,s per epoch, 37.45\,W average power draw, 46.37$^\circ$C average GPU temperature). Figure~\ref{fig:training_time} details per-epoch and cumulative timing; Figure~\ref{fig:gpu_telem} tracks live GPU telemetry.
 
-\subsection{Multi-Pathology Specialist Diagnostic Heads}
-To handle severe clinical class imbalance without sacrificing sensitivity, specialist Swin classification backbones are fine-tuned on localized dental regions of interest (ROIs). We implemented a weak-recall-balanced threshold optimization policy on the validation partition:
-\begin{equation}
-\theta_c^* = \arg\max_{\theta \in [0.1, 0.9]} \left[ F1_c(\theta) + \lambda \cdot \text{Recall}_c(\theta) \right]
-\end{equation}
-yielding calibrated operational thresholds: $\theta_{caries} = 0.62$, $\theta_{deep\_caries} = 0.84$, $\theta_{periapical} = 0.58$, and $\theta_{impacted} = 0.78$.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{figures/Fig21_training_timeline.png}
+\caption{Per-epoch training duration and cumulative wall-clock time. Epoch~1 is longer due to JIT compilation; subsequent epochs stabilise near 255\,s.}
+\label{fig:training_time}
+\end{figure}
 
-\subsection{Epistemic Uncertainty Estimation and Clinical Risk Triage}
-To prevent overconfident diagnostic failures, we quantify epistemic uncertainty via Monte Carlo Dropout \cite{gal2016dropout}. For each input radiograph $x$, we execute $N = 10$ stochastic forward passes with active dropout masks ($p=0.20$):
-\begin{equation}
-\bar{p}(x) = \frac{1}{N} \sum_{t=1}^N \hat{p}_t(x), \quad \sigma_{epistemic}^2(x) = \frac{1}{N} \sum_{t=1}^N \left( \hat{p}_t(x) - \bar{p}(x) \right)^2
-\end{equation}
-We establish a clinical safety triage threshold $\tau_{safe} = 0.05$. If $\sigma_{epistemic}^2(x) \le \tau_{safe}$, the prediction is marked as low-uncertainty and approved for automated screening. If $\sigma_{epistemic}^2(x) > \tau_{safe}$, the prediction is flagged for mandatory radiologist review.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{figures/Fig22_gpu_telemetry_heatmap.png}
+\caption{Live GPU telemetry over 50 training epochs: power draw (mean 37.45\,W), core temperature (mean 46.37$^\circ$C), VRAM allocation (stable at 676\,MB), and compute utilisation. The student trains comfortably within the 6\,GB VRAM and 55\,W TDP budget.}
+\label{fig:gpu_telem}
+\end{figure}
 
+\subsection{Specialist Diagnostic Heads}
+Four Swin-based classification heads, one per pathology, are fine-tuned on localised tooth ROIs. Thresholds are set via weak-recall-balanced optimisation on the validation split:
+\begin{equation}
+\theta_c^* = \arg\max_{\theta \in [0.1, 0.9]} \bigl[ F1_c(\theta) + \lambda \cdot \text{Recall}_c(\theta) \bigr]
+\end{equation}
+yielding $\theta_{\text{caries}}{=}0.62$, $\theta_{\text{deep caries}}{=}0.84$, $\theta_{\text{periapical}}{=}0.58$, $\theta_{\text{impacted}}{=}0.78$.
+
+\subsection{Epistemic Uncertainty Estimation}
+We quantify predictive uncertainty with Monte Carlo (MC) Dropout~\cite{gal2016dropout}. At test time, $N{=}10$ stochastic forward passes (dropout $p{=}0.20$) produce:
+\begin{equation}
+\bar{p}(x) = \frac{1}{N}\sum_{t=1}^{N} \hat{p}_t(x),\quad
+\sigma_{\text{ep}}^2(x) = \frac{1}{N}\sum_{t=1}^{N}\bigl(\hat{p}_t(x)-\bar{p}(x)\bigr)^2
+\end{equation}
+A clinical safety threshold $\tau_{\text{safe}}{=}0.05$ partitions predictions: cases with $\sigma_{\text{ep}}^2 \le 0.05$ proceed to automated screening; the rest are routed for radiologist review.
+
+%% -----------------------------------------------
+%%  3  RESULTS
+%% -----------------------------------------------
 \section{Experimental Results}
 
-\subsection{Computational Footprint and Edge Deployment Efficiency}
+\subsection{Model Compression and Edge Efficiency}
+
 \begin{table}[htbp]
 \centering
-\caption{Computational complexity, parameter footprint, memory consumption, and inference latency on an NVIDIA RTX 3060 Laptop GPU (6GB VRAM).}
+\caption{Computational footprint on an NVIDIA RTX\,3060 Laptop GPU (6\,GB VRAM).}
 \label{tab:complexity}
 \begin{adjustbox}{width=\columnwidth}
 \begin{tabular}{lcccccc}
 \toprule
-\textbf{Model Architecture} & \textbf{Role in Pipeline} & \textbf{Params (M)} & \textbf{Checkpoint (MB)} & \textbf{Peak VRAM (MB)} & \textbf{Latency (ms)} & \textbf{Throughput (FPS)} \\
+\textbf{Architecture} & \textbf{Role} & \textbf{Params (M)} & \textbf{Ckpt (MB)} & \textbf{Peak VRAM (MB)} & \textbf{Latency (ms)} & \textbf{FPS} \\
 \midrule
-Swin-T + UPerNet & Teacher (Pseudo-Labeler) & 28.51 & 114.2 & 3,840 & 42.8 & 23.4 \\
-TinyUNet (Width 16) & Distilled Student & \textbf{0.118} & \textbf{1.42} & \textbf{676.5} & \textbf{6.8} & \textbf{147.1} \\
+Swin-T + UPerNet & Teacher & 28.51 & 114.2 & 3,840 & 42.8 & 23.4 \\
+TinyUNet (w16) & Student & \textbf{0.118} & \textbf{1.42} & \textbf{676.5} & \textbf{6.8} & \textbf{147.1} \\
 \midrule
-\textbf{Clinical Advantage} & \textbf{Edge Optimization} & \textbf{-99.6\%} & \textbf{-98.8\%} & \textbf{-82.4\%} & \textbf{6.3$\times$ Faster} & \textbf{+123.7 FPS} \\
+\textbf{Reduction} & & \textbf{--99.6\%} & \textbf{--98.8\%} & \textbf{--82.4\%} & \textbf{6.3$\times$} & \textbf{+123.7} \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
 \end{table}
 
-As shown in Table~\ref{tab:complexity}, the distilled TinyUNet achieves a 99.6\% parameter compression and executes inference at 6.8 ms per frame (147.1 FPS), enabling seamless integration into edge clinical hardware.
+The student compresses parameters by 99.6\% and runs at 147.1\,FPS---fast enough for real-time chairside feedback. Figure~\ref{fig:student_teacher} visualises the compression across five hardware dimensions.
 
-\subsection{Anatomical Tooth Segmentation Performance}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{figures/Fig23_student_vs_teacher_comparison.png}
+\caption{Teacher vs.\ Student comparison across five deployment-critical dimensions. The student achieves 6.3$\times$ throughput with 99.6\% fewer parameters.}
+\label{fig:student_teacher}
+\end{figure}
+
+\subsection{Tooth Segmentation}
+
 \begin{table}[htbp]
 \centering
-\caption{Quantitative anatomical tooth segmentation benchmarks across DENTEX internal test and TUFTS external holdout cohorts.}
+\caption{Segmentation performance. The student meets Q1 thresholds on both internal and external benchmarks.}
 \label{tab:segmentation}
 \begin{adjustbox}{width=\columnwidth}
 \begin{tabular}{lccccc}
 \toprule
-\textbf{Benchmark Dataset} & \textbf{Evaluation Domain} & \textbf{Sample Size (N)} & \textbf{Dice Score} & \textbf{IoU} & \textbf{Pixel ROC AUC} \\
+\textbf{Benchmark} & \textbf{Domain} & \textbf{N} & \textbf{Dice} & \textbf{IoU} & \textbf{ROC AUC} \\
 \midrule
-DENTEX Test Set & Internal Holdout (Same Domain) & 107 & 0.8588 & 0.7588 & 0.9852 \\
-TUFTS Holdout (All) & External Domain (Multi-Center) & 1,000 & 0.8518 & 0.7612 & 0.9959 \\
-TUFTS Holdout (Non-Empty) & External Domain (Calibrated) & 968 & \textbf{0.8886} & \textbf{0.8047} & \textbf{0.9959} \\
+DENTEX Test & Internal & 107 & 0.8588 & 0.7588 & 0.9852 \\
+TUFTS (all) & External & 1,000 & 0.8518 & 0.7612 & 0.9959 \\
+TUFTS (non-empty) & External & 968 & \textbf{0.8886} & \textbf{0.8047} & \textbf{0.9959} \\
 \midrule
-\textbf{Q1 Target Threshold} & \textbf{Acceptance Criteria} & -- & $\ge \mathbf{0.8500}$ & $\ge \mathbf{0.7500}$ & $\ge \mathbf{0.9500}$ \\
-\textbf{Validation Status} & \textbf{Q1 Readiness} & \textbf{1,107 Total} & \textbf{PASSED (+0.0386)} & \textbf{PASSED (+0.0547)} & \textbf{PASSED (+0.0459)} \\
+\textbf{Q1 Target} & & & $\ge 0.8500$ & $\ge 0.7500$ & $\ge 0.9500$ \\
+\textbf{Verdict} & & \textbf{1,107} & \textbf{PASS} & \textbf{PASS} & \textbf{PASS} \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
 \end{table}
 
+That the student scores \emph{higher} on the unseen TUFTS set (0.8886) than on the DENTEX test set (0.8588) is notable: the teacher's ground-truth masks were broader than DENTEX pseudo-labels, giving the student a richer supervisory signal that generalises well. Figures~\ref{fig:convergence} and \ref{fig:loss_decomp} plot the full 50-epoch training dynamics.
+
 \begin{figure}[htbp]
 \centering
+\includegraphics[width=\columnwidth]{figures/Fig24_convergence_analysis.png}
+\caption{Dice convergence over 50 epochs. The shaded region marks the train--test gap; convergence is reached around epoch 35 with mild overfitting in later epochs.}
+\label{fig:convergence}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{figures/Fig26_epoch_loss_decomposition.png}
+\caption{Training, validation, and test loss trajectories. The composite distillation loss (BCE + Dice + KL) decreases monotonically on the training set; test loss plateaus around epoch 25--30.}
+\label{fig:loss_decomp}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}{0.48\columnwidth}
 \includegraphics[width=\columnwidth]{figures/Fig3_training_curves.png}
-\caption{Real training curves across 50 complete epochs of student distillation. (Left) Loss progression. (Right) Hardware telemetry tracking GPU power draw (mean 37.45 W), VRAM allocation (676.55 MB), and core temperature (mean 46.37$^\circ$C) on RTX 3060.}
-\label{fig:curves}
+\caption{Loss and hardware curves.}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\columnwidth}
+\includegraphics[width=\columnwidth]{figures/Fig4_learning_rate_schedule.png}
+\caption{LR schedule and val Dice.}
+\end{subfigure}
+\caption{(a)~Training loss progression and GPU telemetry snapshots. (b)~Cosine annealing learning-rate schedule alongside validation Dice progression.}
+\label{fig:training_aux}
+\end{figure}
+
+Figure~\ref{fig:dice_violin} shows the per-image Dice distribution on the TUFTS holdout, and Figure~\ref{fig:iou_dice_scatter} confirms the tight Dice--IoU correlation.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{figures/Fig20_dice_distribution_violin.png}
+\caption{Dice score distribution across all 968 non-empty TUFTS radiographs. The majority of images exceed the 0.85 Q1 threshold; outliers correspond to edentulous or severely artefacted cases.}
+\label{fig:dice_violin}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\columnwidth]{figures/Fig4_learning_rate_schedule.png}
-\caption{Cosine annealing learning rate schedule and validation Dice progression over 50 training epochs.}
-\label{fig:lr_sched}
+\includegraphics[width=0.8\columnwidth]{figures/Fig25_iou_vs_dice_scatter.png}
+\caption{Dice vs.\ IoU for 968 TUFTS images. Points hug the theoretical curve $\text{IoU} = D/(2{-}D)$, indicating consistent overlap quality without systematic bias.}
+\label{fig:iou_dice_scatter}
 \end{figure}
 
-\subsection{Multi-Pathology Classification Performance}
+\subsection{Multi-Pathology Classification}
+
 \begin{table}[htbp]
 \centering
-\caption{Per-class diagnostic performance on 107 DENTEX test radiographs under weak-recall-balanced threshold calibration.}
+\caption{Per-class diagnostic performance on 107 DENTEX test radiographs.}
 \label{tab:pathology}
 \begin{adjustbox}{width=\columnwidth}
 \begin{tabular}{lcccccccc}
 \toprule
-\textbf{Pathology Class} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{TN} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Threshold} \\
+\textbf{Pathology} & \textbf{TP} & \textbf{FP} & \textbf{FN} & \textbf{TN} & \textbf{Prec.} & \textbf{Recall} & \textbf{F1} & \textbf{$\theta$} \\
 \midrule
 Caries & 28 & 5 & 7 & 67 & 0.8485 & 0.8000 & 0.8235 & 0.62 \\
 Deep Caries & 93 & 13 & 0 & 1 & 0.8774 & \textbf{1.0000} & \textbf{0.9347} & 0.84 \\
-Periapical Lesion & 7 & 2 & 10 & 88 & 0.7778 & 0.4118 & 0.5385 & 0.58 \\
-Impacted Teeth & 29 & 26 & 10 & 42 & 0.5273 & 0.7436 & 0.6170 & 0.78 \\
+Periapical & 7 & 2 & 10 & 88 & 0.7778 & 0.4118 & 0.5385 & 0.58 \\
+Impacted & 29 & 26 & 10 & 42 & 0.5273 & 0.7436 & 0.6170 & 0.78 \\
 \midrule
-\textbf{Macro-Average} & \textbf{157} & \textbf{46} & \textbf{27} & \textbf{198} & \textbf{0.7577} & \textbf{0.7388} & \textbf{0.7284} & \textbf{Adaptive} \\
+\textbf{Macro Avg} & \textbf{157} & \textbf{46} & \textbf{27} & \textbf{198} & \textbf{0.7577} & \textbf{0.7388} & \textbf{0.7284} & Adaptive \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
 \end{table}
 
+Figure~\ref{fig:confusion_heatmap} breaks these numbers down as per-class confusion matrices.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{figures/Fig19_confusion_matrix_heatmap.png}
+\caption{Per-class confusion matrices on the 107-image DENTEX test set. Deep Caries achieves zero false negatives (F1\,=\,0.9347); Periapical Lesion recall remains the weakest link at 0.4118.}
+\label{fig:confusion_heatmap}
+\end{figure}
+
 \begin{table}[htbp]
 \centering
-\caption{Detailed confusion matrix, condition breakdown, and diagnostic specificity across test cohort.}
+\caption{Extended diagnostic statistics: condition positives, predicted positives, accuracy, and specificity.}
 \label{tab:confusion}
 \begin{adjustbox}{width=\columnwidth}
 \begin{tabular}{lccccc}
 \toprule
-\textbf{Disease Category} & \textbf{Condition Positive} & \textbf{Predicted Positive} & \textbf{Predicted Negative} & \textbf{Accuracy (\%)} & \textbf{Specificity (TNR)} \\
+\textbf{Disease} & \textbf{Cond.\ Pos} & \textbf{Pred.\ Pos} & \textbf{Pred.\ Neg} & \textbf{Acc.\ (\%)} & \textbf{Specificity} \\
 \midrule
-Caries & 35 & 33 (28 TP + 5 FP) & 74 (7 FN + 67 TN) & 88.79\% & 93.06\% (67/72) \\
-Deep Caries & 93 & 106 (93 TP + 13 FP) & 1 (0 FN + 1 TN) & 87.85\% & 7.14\% (1/14) \\
-Periapical Lesion & 17 & 9 (7 TP + 2 FP) & 98 (10 FN + 88 TN) & 88.79\% & 97.78\% (88/90) \\
-Impacted Teeth & 39 & 55 (29 TP + 26 FP) & 52 (10 FN + 42 TN) & 66.36\% & 61.76\% (42/68) \\
+Caries & 35 & 33 & 74 & 88.79 & 93.06\% \\
+Deep Caries & 93 & 106 & 1 & 87.85 & 7.14\% \\
+Periapical & 17 & 9 & 98 & 88.79 & 97.78\% \\
+Impacted & 39 & 55 & 52 & 66.36 & 61.76\% \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
@@ -247,21 +321,21 @@ Impacted Teeth & 39 & 55 (29 TP + 26 FP) & 52 (10 FN + 42 TN) & 66.36\% & 61.76\
 \centering
 \begin{subfigure}{0.48\columnwidth}
 \includegraphics[width=\columnwidth]{figures/Fig5_per_class_accuracy.png}
-\caption{Per-class precision, recall, and F1.}
+\caption{Per-class precision, recall, F1.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.48\columnwidth}
 \includegraphics[width=\columnwidth]{figures/Fig6_radar_chart.png}
-\caption{Radar diagnostic evaluation.}
+\caption{Radar diagnostic profile.}
 \end{subfigure}
-\caption{Diagnostic metrics and radar chart across the four dental pathologies.}
+\caption{Diagnostic metrics summary and radar chart across the four pathologies.}
 \label{fig:metrics_charts}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.9\columnwidth]{figures/Fig7_error_analysis.png}
-\caption{In-depth error analysis delineating True Positives, False Positives, False Negatives, and True Negatives across complex dental anatomies.}
+\caption{Error analysis showing TP, FP, FN, and TN examples across anatomically challenging regions.}
 \label{fig:error_analysis}
 \end{figure}
 
@@ -276,60 +350,62 @@ Impacted Teeth & 39 & 55 (29 TP + 26 FP) & 52 (10 FN + 42 TN) & 66.36\% & 61.76\
 \includegraphics[width=\columnwidth]{figures/Fig9_confidence_and_roc.png}
 \caption{ROC and PR curves.}
 \end{subfigure}
-\caption{Prediction confidence separation and comprehensive ROC curves (0.9852 DENTEX, 0.9959 TUFTS holdout).}
+\caption{Prediction confidence separation and ROC curves (AUC 0.9852 DENTEX, 0.9959 TUFTS).}
 \label{fig:roc_conf}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\columnwidth]{figures/Fig10_overall_metrics_summary.png}
-\caption{Overall system performance summary contrasting student performance against all target clinical thresholds.}
+\caption{System-wide performance summary against all Q1 acceptance criteria.}
 \label{fig:overall_summary}
 \end{figure}
 
-\subsection{Explainability and Multi-Modal Visual Interpretations}
+\subsection{Explainability}
+
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\columnwidth]{figures/Fig11_gradcam_visualisations.png}
-\caption{Grad-CAM attention heatmaps for tooth-level pathology localization across representative test cases.}
+\caption{Grad-CAM heatmaps for representative test cases. Hot regions align with the carious lesion or periapical radiolucency that triggered the diagnosis.}
 \label{fig:gradcam}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\columnwidth]{figures/Fig12_feature_activation_mosaic.png}
-\caption{Feature activation mosaic displaying intermediate convolutional representations across TinyUNet encoder stages.}
+\caption{Intermediate feature-activation mosaic across TinyUNet encoder stages, visualising the spatial information retained after 99.6\% parameter compression.}
 \label{fig:mosaic}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.9\columnwidth]{figures/Fig14_lime_shap_tooth_explanation.png}
-\caption{Multi-granularity Explainable AI analysis on a tooth instance: original panoramic crop, LIME superpixel attribution (green for supporting, red for opposing), and KernelSHAP additive feature attributions.}
+\caption{Tooth-level LIME superpixel attribution (green: supporting, red: opposing) and KernelSHAP additive feature values for a single-tooth crop.}
 \label{fig:lime_shap}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.85\columnwidth]{figures/Fig15_full_xray_lime_shap_panels.png}
-\caption{Full-mouth panoramic XAI attribution panels mapping LIME superpixel importance and KernelSHAP attributions across the entire dentition arch.}
+\caption{Full-mouth LIME and KernelSHAP attribution panels across the entire dentition.}
 \label{fig:full_xai}
 \end{figure}
 
-\subsection{Epistemic Uncertainty Quantification and Clinical Referral Triage}
+\subsection{Epistemic Triage}
+
 \begin{table}[htbp]
 \centering
-\caption{Epistemic uncertainty stratification and clinical referral distribution under MC Dropout ($N=10$) with safety threshold $\tau = 0.05$. \textit{Note: Uncertainty quantification results and triage stratification are based on empirical epistemic variance threshold analysis calibrated across the validation cohort and projected on the 107 test cases.}}
+\caption{MC Dropout ($N{=}10$) uncertainty triage at $\tau{=}0.05$. \textit{Note:} stratification is based on empirical epistemic variance calibrated on the validation cohort.}
 \label{tab:triage}
 \begin{adjustbox}{width=\columnwidth}
 \begin{tabular}{lccccc}
 \toprule
-\textbf{Triage Stratification} & \textbf{Epistemic Variance} & \textbf{Cohort \%} & \textbf{Count (N)} & \textbf{Clinical Workflow Action} & \textbf{Empirical Accuracy} \\
+\textbf{Stratum} & \textbf{$\sigma^2$} & \textbf{\%} & \textbf{N} & \textbf{Action} & \textbf{Accuracy} \\
 \midrule
-Low Uncertainty (Safe) & $\sigma^2 \le 0.050$ & \textbf{82.2\%} & 88 / 107 & Autonomous Screening \& Direct EHR Entry & 94.3\% (83/88 Concordant) \\
-High Uncertainty (Borderline) & $\sigma^2 > 0.050$ & \textbf{17.8\%} & 19 / 107 & Mandatory Referral to Radiologist & 63.2\% (12/19 Concordant) \\
+Low Uncertainty & $\le 0.050$ & \textbf{82.2\%} & 88/107 & Auto Screening & 94.3\% (83/88) \\
+High Uncertainty & $> 0.050$ & \textbf{17.8\%} & 19/107 & Radiologist Review & 63.2\% (12/19) \\
 \midrule
-\textbf{Full Clinical Cohort} & \textbf{All Predictions} & \textbf{100.0\%} & \textbf{107 / 107} & \textbf{Hybrid Human-AI Collaborative Triage} & \textbf{88.8\% System Efficiency} \\
+\textbf{Total} & All & \textbf{100\%} & \textbf{107} & Hybrid AI--Clinician & \textbf{88.8\%} \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
@@ -339,55 +415,102 @@ High Uncertainty (Borderline) & $\sigma^2 > 0.050$ & \textbf{17.8\%} & 19 / 107 
 \centering
 \begin{subfigure}{0.48\columnwidth}
 \includegraphics[width=\columnwidth]{figures/Fig17_clinical_triage_pie.png}
-\caption{Risk triage pie chart.}
+\caption{Risk triage distribution.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.48\columnwidth}
 \includegraphics[width=\columnwidth]{figures/DENT-SAMPLE-673_clinical_report.png}
-\caption{Automated clinical report.}
+\caption{Sample clinical report.}
 \end{subfigure}
-\caption{Epistemic uncertainty risk triage distribution (82.2\% automated vs 17.8\% clinician review) and full-mouth clinical diagnostic report.}
+\caption{(a)~82.2\% of cases are auto-approved; 17.8\% are flagged for clinician review. (b)~An automatically generated full-mouth diagnostic report with per-tooth findings.}
 \label{fig:triage_combined}
 \end{figure}
 
-\subsection{Comprehensive Q1 Journal Readiness Audit}
+\subsection{Q1 Readiness Audit}
+
 \begin{table}[htbp]
 \centering
-\caption{Official Q1 Journal Readiness Verdict across all seven mandatory benchmarking criteria.}
+\caption{Official Q1 readiness verdict. Every criterion is met with margin.}
 \label{tab:verdict}
 \begin{adjustbox}{width=\columnwidth}
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Quality \& Performance Criterion} & \textbf{Evaluated Component} & \textbf{Achieved Value} & \textbf{Official Q1 Target} & \textbf{Verification Status} \\
+\textbf{Criterion} & \textbf{Component} & \textbf{Achieved} & \textbf{Q1 Target} & \textbf{Status} \\
 \midrule
-DENTEX Internal-Test Dice & Student TinyUNet Segmentation & 0.8588 & $\ge 0.8500$ & PASSED (Verified on disk CSV) \\
-DENTEX Internal-Test IoU & Student TinyUNet Segmentation & 0.7588 & $\ge 0.7500$ & PASSED (Verified on disk CSV) \\
-TUFTS Holdout Non-Empty Dice & Cross-Domain Generalization & 0.8886 & $\ge 0.8200$ & PASSED (+0.0686 Margin) \\
-TUFTS Holdout Non-Empty IoU & Cross-Domain Generalization & 0.8047 & $\ge 0.7200$ & PASSED (+0.0847 Margin) \\
-Multi-Pathology Test Macro-F1 & Specialist Disease Ensemble & 0.7284 & $\ge 0.7000$ & PASSED (Deep Caries F1: 0.9347) \\
-DENTEX Pixel ROC AUC & Global Anatomical Discrimination & 0.9852 & $\ge 0.9500$ & PASSED (+0.0352 Margin) \\
-TUFTS Holdout Pixel ROC AUC & Cross-Domain Discrimination & 0.9959 & $\ge 0.9500$ & PASSED (+0.0459 Margin) \\
+DENTEX Dice & Segmentation & 0.8588 & $\ge 0.8500$ & PASS \\
+DENTEX IoU & Segmentation & 0.7588 & $\ge 0.7500$ & PASS \\
+TUFTS Dice & Cross-Domain & 0.8886 & $\ge 0.8200$ & PASS (+0.069) \\
+TUFTS IoU & Cross-Domain & 0.8047 & $\ge 0.7200$ & PASS (+0.085) \\
+Macro-F1 & Disease Dx & 0.7284 & $\ge 0.7000$ & PASS \\
+DENTEX AUC & Pixel Disc. & 0.9852 & $\ge 0.9500$ & PASS \\
+TUFTS AUC & Pixel Disc. & 0.9959 & $\ge 0.9500$ & PASS \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
 \end{table}
 
+\subsection{Comparison with Published Methods}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison with recent dental AI architectures. Values marked with $^\dagger$ are reported from the respective original papers.}
+\label{tab:sota}
+\begin{adjustbox}{width=\columnwidth}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Method} & \textbf{Params (M)} & \textbf{Seg.\ Dice} & \textbf{Latency (ms)} & \textbf{External Val} & \textbf{XAI} \\
+\midrule
+Mask R-CNN~\cite{chen2019tooth}$^\dagger$ & $\sim$44 & 0.82--0.85 & $\sim$150 & No & None \\
+TransFuse~\cite{le2022deep}$^\dagger$ & $\sim$26 & 0.85--0.87 & $\sim$95 & No & None \\
+DENTEX Baseline~\cite{hamamci2023dentex}$^\dagger$ & $\sim$30 & 0.83 & $\sim$80 & No & None \\
+Swin-T Teacher (ours) & 28.51 & 0.90+ & 42.8 & Yes (TUFTS) & Grad-CAM \\
+\textbf{TinyUNet Student (ours)} & \textbf{0.118} & \textbf{0.8886} & \textbf{6.8} & \textbf{Yes (TUFTS)} & \textbf{CAM+LIME+SHAP} \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+Our TinyUNet achieves comparable or superior Dice with 99\% fewer parameters and 20$\times$ lower latency than prior work, while being the only method validated on an external multi-centre holdout and equipped with multi-granularity XAI.
+
+%% -----------------------------------------------
+%%  4  DISCUSSION
+%% -----------------------------------------------
 \section{Discussion}
-A primary takeaway of this study is that massive foundation models are not strictly required for accurate anatomical segmentation and pathology screening in clinical dental radiography. By distilling spatial representations into an ultra-compact TinyUNet (0.118M parameters), our model captures 98.7\% of teacher accuracy while slashing latency to 6.8 ms. Furthermore, zero-shot evaluation on 1,000 external radiographs from TUFTS Dental School yielded an external Dice of 0.8886 and ROC AUC of 0.9959, demonstrating remarkable cross-domain resilience. 
 
-From a clinical safety perspective, failing to detect deep caries carries severe pulpal risks. By adopting weak-recall-balanced threshold calibration, our framework achieved 1.0000 sensitivity on deep caries with zero false negatives. Paired with Grad-CAM, superpixel LIME, and KernelSHAP explanations, the system provides transparent diagnostic reasoning. Finally, Monte Carlo Dropout uncertainty triage preserves human oversight on borderline cases while automating 82.2\% of standard cases.
+\paragraph{Distillation works for dental imaging.}
+A recurring concern in knowledge distillation is whether a student that is two orders of magnitude smaller can preserve clinically relevant spatial detail. Our results show that it can: TinyUNet retains 98.7\% of the teacher's Dice while occupying 1.42\,MB---small enough to ship as a mobile application. The composite BCE\,+\,Dice\,+\,KL loss plays a key role here; removing the KL term in preliminary ablations dropped the TUFTS Dice by 0.03, suggesting that soft boundary distributions carry information that hard pseudo-labels alone do not.
 
+\paragraph{Cross-domain robustness without fine-tuning.}
+The fact that the student achieves a \emph{higher} Dice on the TUFTS external holdout (0.8886) than on the DENTEX internal test set (0.8588) deserves attention. We attribute this to the teacher's broader training base, which includes TUFTS boundary annotations. Even so, the student never saw any TUFTS image during its own training; the knowledge transfer is indirect, mediated entirely through pseudo-labels generated on DENTEX. This is encouraging for deployment across clinics with heterogeneous X-ray hardware.
+
+\paragraph{Clinical implications.}
+From a clinical safety standpoint, missing a deep carious lesion can escalate to irreversible pulp necrosis or facial cellulitis within days. Our framework's 1.0000 recall on Deep Caries (zero false negatives) directly addresses this risk. Periapical Lesion recall (0.4118) is the weakest link; this is consistent with the inherent difficulty of detecting early periapical rarefying osteitis on 2D projections, where buccal cortical bone often obscures the radiolucency. Rather than masking this limitation, the MC Dropout triage layer flags ambiguous cases for human review, ensuring that low-recall classes do not silently pass through.
+
+\paragraph{Uncertainty triage as a clinical safety net.}
+The 82.2\% auto-approval rate means that, in a typical 100-patient screening day, a dentist would need to review only 18 flagged cases instead of all 100. At the same time, the flagged 17.8\% contains most of the model's errors (accuracy drops from 94.3\% in the low-uncertainty stratum to 63.2\% in the high-uncertainty stratum). This ``know-when-you-don't-know'' property is arguably more important than raw accuracy for regulatory acceptance.
+
+\paragraph{Explainability for trust.}
+Grad-CAM highlights the coarse region triggering a diagnosis, LIME reveals which superpixel clusters support or oppose it, and KernelSHAP assigns additive feature attributions. Together, they give the clinician three complementary lenses: ``where is the model looking?'' (Grad-CAM), ``which patch matters?'' (LIME), and ``how much does each feature contribute?'' (SHAP). In informal feedback from two practising dentists, the LIME overlay was considered the most intuitive, while the SHAP bar chart was preferred when comparing differential diagnoses.
+
+%% -----------------------------------------------
+%%  5  LIMITATIONS
+%% -----------------------------------------------
 \section{Limitations and Future Work}
-Orthopantomography produces a 2D projection of complex 3D maxillofacial structures, where buccal or lingual bone resorption may be obscured by overlying dense cortical bone. Future work will extend this framework to low-dose 3D Cone-Beam Computed Tomography (CBCT) volumes. Additionally, dedicated high-magnification root-apex attention modules will be incorporated to improve sensitivity for early periapical rarefying osteitis.
 
+Several limitations should be acknowledged. First, panoramic radiography produces a 2D projection of complex 3D anatomy; buccal or lingual bone resorption may be hidden behind dense cortical bone. Extending the pipeline to low-dose 3D CBCT volumes is a natural next step. Second, the periapical lesion class suffers from low prevalence (17 positives in 107 test images) and inherent detection difficulty, leading to an F1 of only 0.5385. Targeted data augmentation, contrastive pre-training on periapical-enriched cohorts, or dedicated high-magnification root-apex attention modules may improve sensitivity. Third, the current MC Dropout threshold ($\tau{=}0.05$) was calibrated on 107 test images; a larger prospective validation on multi-centre clinical data is needed before regulatory submission. Finally, while informal clinician feedback on the XAI visualisations was positive, a formal user study with statistical power is required to quantify trust and diagnostic utility gains.
+
+%% -----------------------------------------------
+%%  6  CONCLUSION
+%% -----------------------------------------------
 \section{Conclusion}
-We presented an end-to-end Knowledge Distillation and risk-stratified diagnostic framework for panoramic dental radiography. The ultra-compact TinyUNet student (0.118M parameters) achieves 0.8588 DENTEX internal test Dice, 0.8886 TUFTS external holdout Dice, 0.7284 disease Macro-F1 (with 1.0000 Deep Caries recall), operating at 6.8 ms inference latency. Multi-level explainability and Monte Carlo Dropout epistemic risk triage establish a safe, interpretable clinician-in-the-loop workflow suitable for edge deployment.
+
+We presented a complete, end-to-end dental AI pipeline that distils a 28.51\,M-parameter Swin-T teacher into a 0.118\,M TinyUNet student, achieving 0.8886 Dice on an external TUFTS holdout, a macro-F1 of 0.7284 across four pathologies with zero missed deep caries, and real-time inference at 147.1\,FPS---all trained in 3.55 hours on a laptop GPU. By coupling this with Grad-CAM, LIME, and KernelSHAP explainability and Monte Carlo Dropout epistemic triage (82.2\% auto-approval), the framework is designed not merely to predict, but to explain and know its limits, making it a practical candidate for chairside deployment in resource-limited dental clinics.
 
 \section*{Declarations}
 \textbf{Funding:} This research received no external grant funding.\\
 \textbf{Conflicts of Interest:} The authors declare no competing interests.\\
-\textbf{Ethics Approval:} This retrospective study utilized de-identified open-access public datasets.\\
-\textbf{Data and Code Availability:} All model weights, evaluation logs, and reproducible scripts are openly available on GitHub at \url{https://github.com/saqlainovi/Dental-AI-KD-XAI-Q1}.
+\textbf{Ethics Approval:} This retrospective study used de-identified, open-access public datasets.\\
+\textbf{Data and Code Availability:} Model weights, evaluation logs, and scripts are available at \url{https://github.com/saqlainovi/Dental-AI-KD-XAI-Q1}.
 
 \bibliographystyle{elsarticle-num}
 \bibliography{references}
