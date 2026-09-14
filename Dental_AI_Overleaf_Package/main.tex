@@ -1,14 +1,21 @@
 \documentclass[preprint,12pt]{elsarticle}
 
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \usepackage{graphicx}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{adjustbox}
-\usepackage{hyperref}
 \usepackage{xcolor}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage[pdfusetitle=false,colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\hypersetup{
+    pdftitle={Deep Hierarchical Knowledge Distillation with Multimodal Attention and Epistemic Risk Triage for Full-Mouth Pathology Diagnosis on Panoramic Dental Radiographs},
+    pdfauthor={Md. Siyam Saqlain Ovi, Prof. Dr. Md. Saiful Azad, Dental AI Research Group},
+    pdfkeywords={Panoramic Dental Radiography, Knowledge Distillation, Parameter-Efficient TinyUNet, Multi-Pathology Classification, Explainable AI, Epistemic Uncertainty, Clinical Triage}
+}
 
 \journal{Computers in Biology and Medicine}
 
@@ -365,28 +372,28 @@ Impacted & 39 & 55 & 52 & 66.36 & 61.76\% \\
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\columnwidth]{figures/Fig11_gradcam_visualisations.png}
+\includegraphics[width=0.85\columnwidth]{figures/Fig11_gradcam_visualisations.jpg}
 \caption{Grad-CAM heatmaps for representative test cases. Hot regions align with the carious lesion or periapical radiolucency that triggered the diagnosis.}
 \label{fig:gradcam}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\columnwidth]{figures/Fig12_feature_activation_mosaic.png}
+\includegraphics[width=0.85\columnwidth]{figures/Fig12_feature_activation_mosaic.jpg}
 \caption{Intermediate feature-activation mosaic across TinyUNet encoder stages, visualising the spatial information retained after 99.6\% parameter compression.}
 \label{fig:mosaic}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\columnwidth]{figures/Fig14_lime_shap_tooth_explanation.png}
+\includegraphics[width=0.9\columnwidth]{figures/Fig14_lime_shap_tooth_explanation.jpg}
 \caption{Tooth-level LIME superpixel attribution (green: supporting, red: opposing) and KernelSHAP additive feature values for a single-tooth crop.}
 \label{fig:lime_shap}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\columnwidth]{figures/Fig15_full_xray_lime_shap_panels.png}
+\includegraphics[width=0.85\columnwidth]{figures/Fig15_full_xray_lime_shap_panels.jpg}
 \caption{Full-mouth LIME and KernelSHAP attribution panels across the entire dentition.}
 \label{fig:full_xai}
 \end{figure}
@@ -419,7 +426,7 @@ High Uncertainty & $> 0.050$ & \textbf{17.8\%} & 19/107 & Radiologist Review & 6
 \end{subfigure}
 \hfill
 \begin{subfigure}{0.48\columnwidth}
-\includegraphics[width=\columnwidth]{figures/DENT-SAMPLE-673_clinical_report.png}
+\includegraphics[width=\columnwidth]{figures/DENT-SAMPLE-673_clinical_report.jpg}
 \caption{Sample clinical report.}
 \end{subfigure}
 \caption{(a)~82.2\% of cases are auto-approved; 17.8\% are flagged for clinician review. (b)~An automatically generated full-mouth diagnostic report with per-tooth findings.}
