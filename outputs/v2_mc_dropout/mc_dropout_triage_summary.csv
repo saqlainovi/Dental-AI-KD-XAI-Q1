@@ -1,0 +1,4 @@
+stratum,threshold,count,percentage,concordance_accuracy
+Low Uncertainty (Auto Approved),<= 0.05,107,100.0,27.102803738317753
+High Uncertainty (Radiologist Review),> 0.05,0,0.0,0.0
+Total Cohort,All,107,100.0,27.102803738317753

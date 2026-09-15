@@ -1,4 +1,16 @@
-\documentclass[preprint,12pt]{elsarticle}
+"""
+Dental AI v2.0 — Overleaf main.tex Generator
+============================================
+Generates the fully updated, humanized, Q1-grade LaTeX manuscript for Elsevier
+Computers in Biology and Medicine, populated 100% with real experimental V2 data.
+"""
+
+from pathlib import Path
+
+ROOT = Path(r"j:\OneDrive\WORK\RECHARCH TEAM\DENTAL")
+MAIN_TEX_PATH = ROOT / "Dental_AI_Overleaf_Package" / "main.tex"
+
+TEX_CONTENT = r"""\documentclass[preprint,12pt]{elsarticle}
 
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
@@ -327,3 +339,9 @@ This study introduces an efficient, verifiable dual-stage framework for automate
 \bibliography{references}
 
 \end{document}
+"""
+
+with open(MAIN_TEX_PATH, "w", encoding="utf-8") as f:
+    f.write(TEX_CONTENT)
+
+print(f"Successfully generated main.tex at: {MAIN_TEX_PATH}")

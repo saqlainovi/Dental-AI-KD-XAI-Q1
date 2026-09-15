@@ -1,4 +1,9 @@
-# Deep Hierarchical Feature Distillation with Multimodal Attention and Epistemic Risk Triage for Full-Mouth Pathology Diagnosis on Panoramic Dental Radiographs
+"""Update README.md with Dental AI v2.0 real benchmarks."""
+from pathlib import Path
+
+README_PATH = Path(r"j:\OneDrive\WORK\RECHARCH TEAM\DENTAL\README.md")
+
+CONTENT = r"""# Deep Hierarchical Feature Distillation with Multimodal Attention and Epistemic Risk Triage for Full-Mouth Pathology Diagnosis on Panoramic Dental Radiographs
 
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.5%2B-ee4c2c.svg)](https://pytorch.org/)
 [![Journal](https://img.shields.io/badge/Target_Journal-Computers_in_Biology_and_Medicine_(Q1,_IF:_7.7)-1A365D.svg)](https://www.sciencedirect.com/journal/computers-in-biology-and-medicine)
@@ -116,3 +121,9 @@ python run_q1_pipeline_overnight.py
   note={Under Review}
 }
 ```
+"""
+
+with open(README_PATH, "w", encoding="utf-8") as f:
+    f.write(CONTENT.strip() + "\n")
+
+print(f"Updated README.md at: {README_PATH}")
