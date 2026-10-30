@@ -1,0 +1,4 @@
+stratum,threshold,count,percentage,label_accuracy_pct,exact_match_pct,mean_variance
+"Low Uncertainty (<= 0.0035, Auto-Approve)",<= 0.0035,81,75.7,79.32,32.1,0.00231
+"High Uncertainty (> 0.0035, Radiologist Review)",> 0.0035,26,24.3,71.15,23.08,0.00453
+Total Unfiltered Cohort (All Test Cases),All,107,100.0,77.34,29.91,0.00285

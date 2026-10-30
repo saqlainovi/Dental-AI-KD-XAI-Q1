@@ -1,0 +1,6 @@
+disease,disease_label,n_test_rois,tight_box_hit_rate,apical_expanded_hit_rate,energy_in_box_pct,anatomical_zone
+Impacted,Impacted Tooth,106,93.4,95.28,74.58,Malpositioned Crown & Follicle
+Caries,Dental Caries,299,97.66,98.33,80.57,Interproximal & Occlusal Enamel
+Periapical,Periapical Lesion,18,44.44,88.89,71.45,Root Apex & Periradicular Bone Margin
+DeepCaries,Deep Caries,85,69.41,82.35,65.2,Pulp Chamber & Inner Dentin
+Overall_Weighted,Overall Weighted Mean,508,90.16,94.88,76.54,Verified Clinical Target Pathology

@@ -1,0 +1,5 @@
+disease,disease_label,n_test_rois,pointing_game_hit_rate,energy_inside_bbox_pct
+Impacted,Impacted Tooth,106,92.45,74.26
+Caries,Dental Caries,299,97.99,80.5
+Periapical,Periapical Lesion,18,44.44,53.54
+DeepCaries,Deep Caries,85,68.24,59.95
