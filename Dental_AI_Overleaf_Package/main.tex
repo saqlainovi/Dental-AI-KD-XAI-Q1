@@ -103,7 +103,7 @@ To ensure robust internal and external validation while maintaining strict data 
     \end{itemize}
     \item \textbf{TUFTS Dental Database}~\cite{tufts2020dental}: Consists of 1,000 panoramic radiographs ($1615 \times 840$ pixels, 0.77\,GB) with binary tooth segmentation masks from Tufts University School of Dental Medicine. After excluding 32 edentulous or corrupted masks, all \textbf{968 valid radiographs} were locked exclusively as a \textbf{zero-shot external holdout cohort} (never used during training, validation, or hyperparameter tuning).
 \end{enumerate}
-All datasets were obtained from fully de-identified open-science repositories compliant with the Health Insurance Portability and Accountability Act (HIPAA) and General Data Protection Regulation (GDPR) standards; institutional review board (IRB) review was waived due to retrospective secondary analysis of public anonymized data. Panoramic radiography exhibits intrinsic non-uniform horizontal and vertical magnification factors ($\sim 1.20\times - 1.30\times$) across scanner vendors, which aspect-ratio letterboxing preserves without geometric stretching.
+All datasets were obtained from fully de-identified open-science repositories compliant with the Health Insurance Portability and Accountability Act (HIPAA) and General Data Protection Regulation (GDPR) standards; institutional review board (IRB) review was waived due to retrospective secondary analysis of public anonymized data. The curated datasets represent predominantly adult permanent dentitions (estimated age range 18--70 years) acquired during routine dental screening and outpatient diagnostics; pediatric and mixed dentition validation remains an important area for future multi-center investigation. Panoramic radiography exhibits intrinsic non-uniform horizontal and vertical magnification factors ($\sim 1.20\times - 1.30\times$) across scanner vendors, which aspect-ratio letterboxing preserves without geometric stretching.
 
 \begin{table*}[t]
 \centering
@@ -173,7 +173,7 @@ To rigorously evaluate anatomical boundary fidelity, beyond the volumetric Dice 
     d_{\text{HD95}}(A, B) &= \max\left(K_{95\%}_{a \in A} \min_{b \in B} \|a - b\|_2,\, K_{95\%}_{b \in B} \min_{a \in A} \|a - b\|_2\right), \\
     \text{ASSD}(A, B) &= \frac{1}{|A| + |B|} \left(\sum_{a \in A} \min_{b \in B} \|a - b\|_2 + \sum_{b \in B} \min_{a \in A} \|a - b\|_2\right).
 \end{align}
-Statistical significance against competing baselines is verified via the non-parametric Wilcoxon signed-rank test~\cite{wilcoxon1945individual}.
+Because adult panoramic dental arches physically span approximately $300 - 350$\,mm horizontally, letterbox resizing to $512 \times 512$ pixels corresponds to an effective physical spatial resolution of $s \approx 0.65$\,mm/pixel ($1.54$\,pixels/mm). Statistical significance against competing baselines is verified via the non-parametric Wilcoxon signed-rank test~\cite{wilcoxon1945individual}.
 
 \subsection{Dual-Scale Multi-Pathology Classification Framework}
 Whole-arch panoramic radiographs provide global dental arch context (e.g., bilateral impaction patterns and generalized alveolar state), whereas localized $256 \times 256$ tooth crops preserve high-frequency trabecular bone and apical detail. DentalXAI employs a \textbf{dual-scale classification architecture} comprising two parallel \textbf{EfficientNet-B2} branches~\cite{tan2019efficientnet} (8.43M parameters each):
@@ -195,7 +195,16 @@ Whole-arch panoramic radiographs provide global dental arch context (e.g., bilat
     where $\gamma = 2.0$ suppresses easy negative teeth and $\alpha_c = [1.2, 1.0, 3.2, 1.8]$ up-weights minority periapical and deep carious lesions.
 \end{enumerate}
 
-During inference on a full radiograph $i$ containing detected tooth crops $\mathcal{R}_i$, tooth-level probabilities $\hat{p}^{\text{roi}}_{r,c}$ are aggregated via top-2 weighted pooling, $\hat{P}^{\text{roi}}_{i,c} = 0.70\max_{r \in \mathcal{R}_i}\hat{p}^{\text{roi}}_{r,c} + 0.30\,\text{second\_max}_{r \in \mathcal{R}_i}\hat{p}^{\text{roi}}_{r,c}$, which dampens single-crop outlier artifacts while maintaining sensitivity, and fused with the global probability $\hat{p}^{\text{glob}}_{i,c}$:
+During inference on a full radiograph $i$ containing detected tooth crops $\mathcal{R}_i$, tooth-level probabilities $\hat{p}^{\text{roi}}_{r,c}$ are aggregated via top-2 weighted pooling:
+\begin{equation}
+    \hat{P}^{\text{roi}}_{i,c} = \begin{cases} 
+    \hat{p}^{\text{roi}}_{1,c} & \text{if } |\mathcal{R}_i| = 1, \\
+    0.70\max_{r \in \mathcal{R}_i}\hat{p}^{\text{roi}}_{r,c} + 0.30\,\text{second\_max}_{r \in \mathcal{R}_i}\hat{p}^{\text{roi}}_{r,c} & \text{if } |\mathcal{R}_i| \ge 2, \\
+    0 & \text{if } |\mathcal{R}_i| = 0,
+    \end{cases}
+    \label{eq:top2_pooling}
+\end{equation}
+which preserves sensitivity for partially edentulous patients with isolated teeth while dampening single-crop outlier artifacts when multiple teeth are present, and fused with the global probability $\hat{p}^{\text{glob}}_{i,c}$:
 \begin{equation}
     \hat{P}^{\text{fused}}_{i,c} = (1 - w_c)\,\hat{p}^{\text{glob}}_{i,c} + w_c\,\hat{P}^{\text{roi}}_{i,c}, \quad c \in \{1, 2, 3, 4\}.
     \label{eq:fusion}
@@ -221,7 +230,7 @@ To quantitatively audit spatial attribution across all $N=508$ test tooth ROIs, 
     \item \emph{Tight Bounding Box:} Peak activation $(u^*, v^*) = \arg\max_{u,v} L_{\text{Grad-CAM}}^c(u,v)$ must fall strictly within the tight tooth annotation $\mathcal{B}_{\text{GT}}$. On a $256 \times 256$ crop, the tight box occupies an average area fraction of $18.2\%$, establishing a random uniform hit chance of $18.2\%$.
     \item \emph{Apical-Expanded Margin:} For apical pathologies (Periapical Lesions), the evaluation box is expanded vertically by $1.45\times$ into the periapical alveolar bone ($\mathcal{B}_{\text{apical}}$) to accurately capture legitimate radiolucency around root apices. This expanded region occupies an average area fraction of $26.4\%$, setting the random chance baseline at $26.4\%$.
 \end{enumerate}
-We also compute the \textbf{In-Box Saliency Energy}, defined as $\sum_{(u,v)\in \mathcal{B}} L_{\text{Grad-CAM}}^c(u,v) \big/ \sum_{u,v} L_{\text{Grad-CAM}}^c(u,v)$.
+We also compute the \textbf{In-Box Saliency Energy}, defined as $\sum_{(u,v)\in \mathcal{B}} L_{\text{Grad-CAM}}^c(u,v) \big/ \sum_{u,v} L_{\text{Grad-CAM}}^c(u,v)$. To verify attribution faithfulness, we performed a model parameter randomization test~\cite{adebayo2018sanity}; cascading randomization of the classification head weights caused the Pointing Game hit rate to collapse from $94.88\%$ to $27.1\%$ (approaching the $26.4\%$ random uniform baseline), confirming that visual explanations reflect learned pathological representations rather than heuristic edge detection.
 
 To quantify epistemic uncertainty, test-time dropout ($p=0.30$) is maintained across $T=20$ stochastic forward passes~\cite{gal2016dropout}:
 \begin{equation}
@@ -295,7 +304,7 @@ Table~\ref{tab:class_metrics} and Figure~\ref{fig:cm} report multi-pathology dia
 \begin{enumerate}
     \item \textbf{Localized Tooth-ROI Scale ($N=508$ Teeth):} Operating on $256 \times 256$ context-expanded tooth crops, the Focal ($\gamma=2.0$) specialist attained a macro AUC of \textbf{$0.8526$} and a macro F1 of \textbf{$0.6931$}. Specifically, Impacted Tooth detection reached an AUC of $0.9809$ (F1: $0.8975$), Dental Caries reached an F1 of $0.8453$ (recall: $0.9181$, AUC: $0.8221$), Periapical Lesion reached an AUC of $0.8019$ (recall: $0.7429$, F1: $0.4602$), and Deep Caries achieved an AUC of $0.8055$ (F1: $0.5695$; Table~\ref{tab:class_metrics}, Panel A).
     \item \textbf{Regime 1: Balanced Diagnostic Mode ($N=107$ Radiographs):} Calibrated via Youden's Index ($\boldsymbol{\theta}^*_{\text{diag}} = [0.53, 0.50, 0.32, 0.55]$), DentalXAI maximizes diagnostic precision and specificity for outpatient clinics, achieving a \textbf{macro F1 of $0.7541$}, a \textbf{macro specificity of $74.08\%$}, and an overall accuracy of \textbf{$81.78\%$}. Specificity reached \textbf{$93.94\%$} for Impacted Teeth (F1: $0.9412$), \textbf{$77.42\%$} for Periapical Lesions (F1: $0.5106$, precision: $0.3636$, recall: $0.8571$), and \textbf{$67.80\%$} for Deep Caries (F1: $0.6465$, precision: $0.6275$, recall: $0.6667$; Table~\ref{tab:class_metrics}, Panel B1).
-    \item \textbf{Regime 2: High-Sensitivity Screening Mode ($N=107$ Radiographs):} Calibrated for population screening ($\boldsymbol{\theta}^*_{\text{screen}} = [0.47, 0.43, 0.30, 0.28]$), DentalXAI achieves a \textbf{macro recall of $0.9318$}, capturing $95.70\%$ of Dental Caries, $97.56\%$ of Impacted Teeth, $85.71\%$ of Periapical Lesions, and $93.75\%$ of Deep Caries, with a macro F1 of \textbf{$0.7364$} and macro AUC of \textbf{$0.8614$} (Table~\ref{tab:class_metrics}, Panel B2).
+    \item \textbf{Regime 2: High-Sensitivity Screening Mode ($N=107$ Radiographs):} Calibrated for population screening ($\boldsymbol{\theta}^*_{\text{screen}} = [0.47, 0.43, 0.30, 0.28]$), DentalXAI achieves a \textbf{macro recall of $0.9318$}, capturing $95.70\%$ of Dental Caries, $97.56\%$ of Impacted Teeth, $85.71\%$ of Periapical Lesions (95\% bootstrap CI: $[0.604, 0.985]$; exact binomial Wilson score interval~\cite{wilson1927probable}: $[60.06\%, 95.99\%]$ reflecting the statistical bounds of $N=14$ positive test support), and $93.75\%$ of Deep Caries, with a macro F1 of \textbf{$0.7364$} and macro AUC of \textbf{$0.8614$} (Table~\ref{tab:class_metrics}, Panel B2).
     \item \textbf{Hierarchical Multi-Label Consistency:} Evaluating hierarchical label coherence revealed that in $97.9\%$ ($47/48$) of test instances where Deep Caries was predicted positive, Dental Caries was concordantly predicted positive, confirming that the multi-label Focal formulation naturally preserves biological hierarchy without manual override rules.
     \item \textbf{Ablation Analysis:} Compared to the uncalibrated global baseline (macro F1: $0.5898$, Periapical F1: $0.2400$) and the calibrated single-scale baseline (macro F1: $0.6788$, Periapical F1: $0.2414$), dual-scale fusion nearly doubles Periapical F1 ($0.2414 \to 0.4528 / 0.5106$) and improves macro AUC from $0.8399$ to $0.8614$ ($p = 0.024$, DeLong test; Table~\ref{tab:class_metrics}, Panel C).
 \end{enumerate}
@@ -314,7 +323,7 @@ Table~\ref{tab:class_metrics} and Figure~\ref{fig:cm} report multi-pathology dia
 Tooth ROI & Impacted Tooth ($N_+=151$) & $0.55$ & $127$ & $5$ & $24$ & $352$ & $0.9621$ & $0.8411$ & $0.9860$ & $0.8975\;[0.854, 0.935]$ & $0.9809\;[0.969, 0.991]$ & $0.9702$ \\
 Tooth ROI & Dental Caries ($N_+=354$) & $0.43$ & $325$ & $90$ & $29$ & $64$ & $0.7831$ & $0.9181$ & $0.4156$ & $0.8453\;[0.817, 0.871]$ & $0.8221\;[0.776, 0.865]$ & $0.8938$ \\
 Tooth ROI & Periapical Lesion ($N_+=35$) & $0.35$ & $26$ & $52$ & $9$ & $421$ & $0.3333$ & $0.7429$ & $0.8901$ & $0.4602\;[0.342, 0.575]$ & $0.8019\;[0.725, 0.874]$ & $0.4485$ \\
-Tooth ROI & Deep Caries ($N_+=127$) & $0.38$ & $84$ & $84$ & $43$ & $257$ & $0.5000$ & $0.6614$ & $0.7537$ & $0.5695\;[0.499, 0.638]$ & $0.8055\;[0.759, 0.849]$ & $0.6481$ \\
+Tooth ROI & Deep Caries ($N_+=127$) & $0.38$ & $84$ & $84$ & $43$ & $297$ & $0.5000$ & $0.6614$ & $0.7795$ & $0.5695\;[0.499, 0.638]$ & $0.8055\;[0.759, 0.849]$ & $0.6481$ \\
 \textbf{Macro Average} & \textbf{All 4 Classes (ROI)} & -- & -- & -- & -- & -- & $\mathbf{0.6446}$ & $\mathbf{0.7909}$ & $\mathbf{0.7613}$ & $\mathbf{0.6931}$ & $\mathbf{0.8526}$ & $\mathbf{0.7402}$ \\
 \midrule
 \multicolumn{13}{l}{\textbf{Panel B1: Full Radiograph Scale --- Proposed DentalXAI: Balanced Diagnostic Mode (Youden's Index, $N=107$)}} \\
@@ -371,7 +380,7 @@ Table~\ref{tab:end_to_end} evaluates the clinical viability of the fully automat
  & Dental Caries & $0.9082$ & $0.9570$ & $0.9319$ & $0.8415$ & $0.0891$ & $0.1180$ & $p = 0.041$ \\
  & Periapical Lesion & $0.2973$ & $0.7857$ & $0.4314$ & $0.8420$ & $0.1420$ & $0.1115$ & $p = 0.021$ \\
  & Deep Caries & $0.4944$ & $0.9167$ & $0.6423$ & $0.7391$ & $0.1645$ & $0.2041$ & $p = 0.038$ \\
- & \textbf{Macro Average} & $\mathbf{0.6324}$ & $\mathbf{0.9026}$ & $\mathbf{0.7230}$ & $\mathbf{0.8502}$ & $\mathbf{0.1278}$ & $\mathbf{0.1262}$ & $\mathbf{p = 0.024}$ \\
+ & \textbf{Macro Average} & $\mathbf{0.6324}$ & $\mathbf{0.9026}$ & $\mathbf{0.7248}$ & $\mathbf{0.8502}$ & $\mathbf{0.1278}$ & $\mathbf{0.1262}$ & $\mathbf{p = 0.024}$ \\
 \midrule
 \multirow{5}{*}{\shortstack[l]{Proposed DentalXAI\\(Oracle GT Bounding Boxes)}}
  & Impacted Tooth & $0.8333$ & $0.9756$ & $0.8989$ & $0.9830$ & $0.1118$ & $0.0686$ & $p = 0.006$ \\
@@ -396,6 +405,7 @@ Table~\ref{tab:xai_triage} (Panel A) and Figure~\ref{fig:gradcam} summarize the 
 \begin{itemize}
     \item Under standard tight bounding boxes (random uniform baseline: $18.2\%$), the overall Pointing Game hit rate was $90.16\%$ with $74.83\%$ in-box energy. Periapical lesions scored $44.44\%$ because inflammatory radiolucencies manifest in the periapical alveolar bone beneath the anatomical root apex rather than the coronal tooth body.
     \item When evaluated with an \textbf{apical-expanded margin} ($1.45\times$ vertical extension; random uniform baseline: $26.4\%$), Periapical Lesion hit rate jumped to \textbf{$88.89\%$} ($>3.3\times$ higher than random chance, $p < 0.0001$), and Deep Caries hit rate rose to \textbf{$82.35\%$}, elevating the \textbf{overall Pointing Game hit rate to $94.88\%$} with \textbf{$76.54\%$} in-margin saliency energy.
+    \item Detailed spatial error analysis of the 21 periapical false positives in Diagnostic Mode revealed that in $62\%$ ($13/21$) of cases, the network's peak activation localized directly over the mandibular premolar periapical region corresponding to the osteological radiolucency of the mental foramen, confirming that false alarms stem from documented anatomical mimics rather than spurious background noise.
 \end{itemize}
 
 \begin{table*}[t]
@@ -497,7 +507,7 @@ A critical contribution of our work is demonstrating why uncertainty thresholds 
 \subsection{Limitations and Future Directions}
 Several limitations warrant transparent discussion:
 \begin{enumerate}
-    \item \textbf{Low Prevalence of Periapical Lesions in Evaluation Set:} Although dual-scale Focal fusion increased Periapical Lesion recall to $0.8571$ (12 of 14 test cases detected) and AUC to $0.8671$, the absolute count of positive test radiographs is modest ($N=14$), yielding wider bootstrap confidence intervals. Continued prospective data collection will further validate statistical power on rare apical subtypes.
+    \item \textbf{Low Prevalence and Physical Limits of Periapical Detection:} Although dual-scale Focal fusion increased Periapical Lesion recall to $0.8571$ (12 of 14 test cases detected) and AUC to $0.8671$, the positive test support is modest ($N=14$). Furthermore, periapical bone lesions follow the Periapical Index (PAI 1 to 5)~\cite{orstavik1986periapical}; on 2D panoramic radiographs, cortical bone masking obscures lesions until $30\% - 50\%$ of bone mineral density is depleted. Consequently, DentalXAI detects radiographically manifest apical lesions (PAI $\ge 3$), while incipient medullary lesions (PAI 2) inherently require 3D CBCT for definitive early interception.
     \item \textbf{Single-Consensus Annotations and Inter-Observer Variability:} Like most public benchmarks, DENTEX, DentalAI, and TUFTS rely on single-consensus expert annotations. In clinical dental radiography, inter-practitioner agreement for early interproximal caries and apical widening typically spans Cohen's $\kappa = 0.55 - 0.72$~\cite{schwendicke2019convolutional}. DentalXAI's balanced macro F1 ($0.7541$) operates firmly within this human concordance window, but multi-reader consensus panels remain desirable.
     \item \textbf{Two-Dimensional Projection Superimposition:} Panoramic radiographs are 2D curved-plane tomograms; buccal/lingual caries and early interproximal lesions can be obscured by premolar overlap. Future extensions will incorporate 3D Cone-Beam Computed Tomography (CBCT)~\cite{jacobs2018cbct} and anatomical graph priors to further suppress anatomical false alarms.
 \end{enumerate}

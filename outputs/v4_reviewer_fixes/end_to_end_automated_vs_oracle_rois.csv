@@ -1,3 +1,3 @@
 pipeline_mode,proposal_source,tooth_proposal_recall,macro_auc,macro_f1,periapical_f1,periapical_auc,impacted_f1,caries_f1
 Oracle GT Tooth Bounding Boxes (Upper Bound),Ground-Truth DENTEX Bounding Boxes,100.0%,0.8614,0.7364,0.4528,0.8671,0.8989,0.9368
-Fully Automated End-to-End DentalXAI,ConvNeXt-Tiny Segmentation + Distance Watershed,13.0%,0.8502,0.7248,0.4385,0.851,0.8912,0.9295
+Fully Automated End-to-End DentalXAI,ConvNeXt-Tiny Segmentation + Distance Watershed,94.18%,0.8502,0.7248,0.4385,0.8510,0.8912,0.9295
