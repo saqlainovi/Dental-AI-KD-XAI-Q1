@@ -335,7 +335,14 @@ df_Verify = pd.DataFrame(checks, columns=["Q1 Peer-Review Requirement", "Verifie
 df_Verify["Status"] = df_Verify["Verified"].map(lambda x: "PASS (100% REAL DATA)" if x else "FAIL")
 display(df_Verify)
 assert all(x[1] for x in checks), "One or more verification checks failed!"
-print("\\nALL 10 Q1 PEER-REVIEW REQUIREMENTS PASSED 100% WITH REAL EXPERIMENTAL DATA!")"""
+print("\\nALL 10 Q1 PEER-REVIEW REQUIREMENTS PASSED 100% WITH REAL EXPERIMENTAL DATA!")
+
+# Empirical Claim Forensic Telemetry Verification Table
+emp_csv = Path("outputs/v4_reviewer_fixes/empirical_verification_summary.csv")
+if emp_csv.exists():
+    df_emp = pd.read_csv(emp_csv)
+    print("\\n=== FORENSIC EMPIRICAL BENCHMARK VERIFICATION (NVIDIA RTX 3060) ===")
+    display(df_emp)"""
     ))
 
     return {

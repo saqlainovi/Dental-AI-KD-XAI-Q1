@@ -1,0 +1,56 @@
+{
+  "latency": {
+    "seg_fp32_mean_ms": 17.823033332824707,
+    "seg_fp32_std_ms": 0.20223215761135624,
+    "seg_fp16_mean_ms": 12.90695071220398,
+    "seg_fp16_std_ms": 6.834379704750805,
+    "cls_fp16_mean_ms": 15.648443822860719,
+    "cls_fp16_std_ms": 9.027677989109455,
+    "mc_dropout_20pass_mean_ms": 297.1283209228516,
+    "mc_dropout_20pass_std_ms": 15.349942186274541
+  },
+  "bbox_fractions": {
+    "overall_tight_mean_pct": 31.21515590875002,
+    "overall_apical_mean_pct": 45.26197606768752,
+    "disease_breakdown": {
+      "Impacted": {
+        "n_rois": 106,
+        "tight_mean_pct": 40.509347320924846,
+        "apical_mean_pct": 58.738553615341026
+      },
+      "Caries": {
+        "n_rois": 299,
+        "tight_mean_pct": 28.774107875581457,
+        "apical_mean_pct": 41.72245641959311
+      },
+      "Periapical": {
+        "n_rois": 18,
+        "tight_mean_pct": 29.031287540331242,
+        "apical_mean_pct": 42.09536693348031
+      },
+      "DeepCaries": {
+        "n_rois": 85,
+        "tight_mean_pct": 28.673964177672453,
+        "apical_mean_pct": 41.57724805762504
+      }
+    }
+  },
+  "watershed_recall": {
+    "n_test_images": 64,
+    "total_gt_teeth": 1838,
+    "total_proposed_rois": 464,
+    "total_matched_teeth": 1741,
+    "proposal_recall_pct": 94.72252448313384
+  },
+  "hierarchical_consistency": {
+    "gt_roi_deep_caries_count": 127,
+    "gt_roi_both_caries_count": 61,
+    "gt_roi_concordance_pct": 48.031496062992126,
+    "pred_concordance_pct": 92.13483146067416
+  },
+  "adebayo_test": {
+    "trained_pointing_hit_rate_pct": 31.666666666666664,
+    "randomized_pointing_hit_rate_pct": 50.0,
+    "collapse_ratio": -18.333333333333336
+  }
+}

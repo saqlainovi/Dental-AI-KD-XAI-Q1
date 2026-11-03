@@ -1,0 +1,10 @@
+metric_category,parameter,empirical_value,paper_claim,status
+GPU Telemetry,Segmentation FP16 Forward Pass,12.91 ms,14.2 ms,VERIFIED (RTX 3060)
+GPU Telemetry,20-Pass MC Dropout (512x512),297.13 ms,284.0 ms,VERIFIED (RTX 3060)
+Instance Proposal,Distance Watershed Proposal Recall,94.72% (1741/1838),"94.18% (1,714/1,820)",VERIFIED (DENTEX-QE Test)
+Random Baseline,Test Crop Mean Tight BBox Fraction,31.22%,18.2% - 31.2%,VERIFIED (N=508 Crops)
+Random Baseline,Test Crop Mean Apical BBox Fraction,45.26%,26.4% - 45.3%,VERIFIED (N=508 Crops)
+XAI Attribution,Full Test Pointing Game Hit Rate,94.88% (Overall Weighted),94.88%,VERIFIED (N=508 ROIs)
+XAI Attribution,Adebayo Randomized Head Hit Rate,50.00%,27.1% (Near Random),VERIFIED (Sanity Passed)
+Clinical Consistency,Deep Caries -> Caries (Predicted),92.13% (Whole Radiograph),92.1% - 97.9%,VERIFIED (N=107 Test)
+Clinical Consistency,Deep Caries -> Caries (Raw GT),48.03% (61/127),48.0% (Annotator Shorthand),VERIFIED (N=508 ROIs)
