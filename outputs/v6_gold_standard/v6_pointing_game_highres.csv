@@ -1,0 +1,5 @@
+disease,n_rois,tight_box_hit_rate,core_tooth_hit_rate,energy_tight_pct,energy_core_pct
+Impacted,106,93.4,98.11,67.16,76.87
+Caries,299,69.9,96.99,49.49,79.38
+Periapical,18,55.56,61.11,38.01,50.81
+DeepCaries,85,51.76,63.53,34.9,54.44

@@ -1,0 +1,9 @@
+operating_regime,disease,threshold,tp,fp,fn,tn,precision,recall,specificity,accuracy,f1,auc,ap,support
+Balanced_Diagnostic_Mode,Impacted,0.74,41,3,0,59,0.9318,1.0,0.9516,97.09,0.9647,0.9988,0.9983,41
+Balanced_Diagnostic_Mode,Caries,0.63,93,5,0,5,0.949,1.0,0.5,95.15,0.9738,0.8543,0.9709,93
+Balanced_Diagnostic_Mode,Periapical,0.37,13,24,1,65,0.3514,0.9286,0.7303,75.73,0.5098,0.8917,0.6016,14
+Balanced_Diagnostic_Mode,DeepCaries,0.35,43,24,5,31,0.6418,0.8958,0.5636,71.84,0.7478,0.8606,0.8696,48
+High_Sensitivity_Screening_Mode,Impacted,0.34,41,29,0,33,0.5857,1.0,0.5323,71.84,0.7387,0.9988,0.9983,41
+High_Sensitivity_Screening_Mode,Caries,0.29,93,8,0,2,0.9208,1.0,0.2,92.23,0.9588,0.8543,0.9709,93
+High_Sensitivity_Screening_Mode,Periapical,0.15,14,58,0,31,0.1944,1.0,0.3483,43.69,0.3256,0.8917,0.6016,14
+High_Sensitivity_Screening_Mode,DeepCaries,0.16,46,39,2,16,0.5412,0.9583,0.2909,60.19,0.6917,0.8606,0.8696,48

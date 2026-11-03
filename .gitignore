@@ -25,3 +25,8 @@ __pycache__/
 # System files
 .DS_Store
 Thumbs.db
+
+# V6 outputs crops and checkpoints
+outputs/v6_gold_standard/crops/
+outputs/v6_gold_standard/checkpoints/
+scratch/
