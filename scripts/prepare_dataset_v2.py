@@ -24,7 +24,7 @@ from collections import defaultdict
 from PIL import Image
 
 # ── Paths ──────────────────────────────────────────────────────────────
-ROOT = Path(r"j:\OneDrive\WORK\RECHARCH TEAM\DENTAL")
+ROOT = Path(__file__).resolve().parents[1]
 DATA_RAW = ROOT / "data" / "raw"
 OUTPUT_DIR = ROOT / "data" / "processed_v2"
 

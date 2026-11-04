@@ -9,8 +9,8 @@ Trains specialist disease classification heads for 4 dental pathologies:
 
 Features:
   - Pretrained Vision Backbone fine-tuning
-  - True Knowledge Distillation (KD) from high-capacity teacher
-  - Loss balancing BCE (hard labels) + KL Divergence (teacher soft logits)
+  - Class-balanced binary cross-entropy on hard DENTEX labels
+  - Validation-only threshold calibration
   - Class-balanced pos_weights to boost rare classes (Periapical)
   - Per-class threshold calibration on validation cohort
   - Full evaluation on 107 DENTEX test set with confusion matrices & F1
@@ -23,6 +23,7 @@ import os
 import sys
 import time
 import argparse
+import random
 import json
 import pandas as pd
 import numpy as np
@@ -41,7 +42,7 @@ except ImportError:
     sys.exit(1)
 
 # ── Paths ──────────────────────────────────────────────────────────────
-ROOT = Path(r"j:\OneDrive\WORK\RECHARCH TEAM\DENTAL")
+ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data" / "processed_v2"
 MANIFEST_PATH = DATA_DIR / "dataset_manifest_v2.csv"
 OUTPUT_DIR = ROOT / "outputs" / "v2_disease_classification"
@@ -123,28 +124,19 @@ class DentalMultiDiseaseClassifier(nn.Module):
 
 # ── Distillation Loss ─────────────────────────────────────────────────
 
-class DistillationBceLoss(nn.Module):
-    """Composite loss: Weighted BCE for hard ground-truth labels + KD soft distillation."""
+class WeightedBceLoss(nn.Module):
+    """Class-balanced BCE loss used by the V2 disease-classification experiment.
 
-    def __init__(self, pos_weights=None, alpha=0.6, beta=0.4, temperature=4.0):
+    The historical filename is retained for backwards compatibility with existing
+    commands.  This V2 run does not use a teacher model or distillation loss.
+    """
+
+    def __init__(self, pos_weights=None):
         super().__init__()
-        self.alpha = alpha
-        self.beta = beta
-        self.temperature = temperature
         self.bce = nn.BCEWithLogitsLoss(pos_weight=pos_weights)
 
-    def forward(self, student_logits, targets, teacher_logits=None):
-        hard_loss = self.bce(student_logits, targets)
-
-        if teacher_logits is not None:
-            # Soft distillation loss (sigmoid-based KL for multi-label)
-            student_soft = torch.sigmoid(student_logits / self.temperature)
-            teacher_soft = torch.sigmoid(teacher_logits / self.temperature)
-            kd_loss = F.binary_cross_entropy(student_soft, teacher_soft) * (self.temperature ** 2)
-            total_loss = self.alpha * hard_loss + self.beta * kd_loss
-            return total_loss, hard_loss, kd_loss
-        else:
-            return hard_loss, hard_loss, torch.tensor(0.0, device=student_logits.device)
+    def forward(self, logits, targets):
+        return self.bce(logits, targets)
 
 
 # ── Calibration and Evaluation ────────────────────────────────────────
@@ -253,6 +245,12 @@ def train_disease_pipeline(args):
     print(f"Backbone: {args.backbone}")
     print(f"Learning Rate: {args.lr}")
 
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
+
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -288,7 +286,7 @@ def train_disease_pipeline(args):
     model.to(device)
     print(f"Model: {args.backbone} ({model.total_params / 1e6:.2f} M params)")
 
-    criterion = DistillationBceLoss(pos_weights=pos_weights_tensor, alpha=1.0, beta=0.0)
+    criterion = WeightedBceLoss(pos_weights=pos_weights_tensor)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-6)
     scaler = torch.cuda.amp.GradScaler()
@@ -310,7 +308,7 @@ def train_disease_pipeline(args):
             optimizer.zero_grad()
             with torch.cuda.amp.autocast():
                 logits = model(images)
-                loss, _, _ = criterion(logits, targets)
+                loss = criterion(logits, targets)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -393,6 +391,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=8, help="Batch size")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--backbone", type=str, default="efficientnet_b2", help="timm backbone")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed recorded in the checkpoint")
     args = parser.parse_args()
 
     train_disease_pipeline(args)

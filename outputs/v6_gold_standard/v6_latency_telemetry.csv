@@ -1,0 +1,4 @@
+component,mean_ms,std_ms
+"ConvNeXt-Tiny + All-MLP Segmentation (512x512, FP16)",12.97,0.81
+"Hierarchical CSRA+Geometry Specialist (Single Pass, 256x256, FP16)",18.26,1.42
+20-Pass MC Dropout Epistemic Uncertainty Triage (FP16),373.29,44.44

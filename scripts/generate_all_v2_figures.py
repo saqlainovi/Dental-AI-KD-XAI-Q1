@@ -1,8 +1,9 @@
 """
 Dental AI v2.0 — Publication Figures Generator (Real V2 Results)
 ================================================================
-Generates all 10 core publication figures directly from real v2 training and test runs.
-Zero synthetic or projected data.
+Generates V2 publication figures from saved training and evaluation artefacts.
+Every plotted value must be read from a CSV or checkpoint; do not add projected
+baselines, telemetry, or timing values to this file.
 """
 
 import os
@@ -14,7 +15,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-ROOT = Path(r"j:\OneDrive\WORK\RECHARCH TEAM\DENTAL")
+ROOT = Path(__file__).resolve().parents[1]
 OUT_FIGS = ROOT / "outputs" / "paper_figures_v2"
 OVERLEAF_FIGS = ROOT / "Dental_AI_Overleaf_Package" / "figures"
 OUT_FIGS.mkdir(parents=True, exist_ok=True)
@@ -69,13 +70,12 @@ def make_fig19():
 
 # 2. Fig21: Training Timeline
 def make_fig21():
+    seg = pd.read_csv(ROOT / "outputs" / "v2_segmentation" / "segformer_tooth_seg_epoch_history.csv")
+    disease = pd.read_csv(ROOT / "outputs" / "v2_disease_classification" / "disease_training_epoch_history.csv")
     fig, ax = plt.subplots(figsize=(10, 4.5))
     phases = [
-        ("Phase 1: CLAHE & 512² Preprocessing", 14.2, "#2b5c8f"),
-        ("Phase 2: ConvNeXt-Tiny Tooth Seg (60 Ep)", 138.0, "#2ca02c"),
-        ("Phase 3: Multi-Pathology Distillation (40 Ep)", 21.8, "#d95f02"),
-        ("Phase 4: Real 20-Pass MC Dropout (107 Img)", 0.64, "#7570b3"),
-        ("Phase 5: Evaluation & Artifact Generation", 0.07, "#e7298a")
+        ("ConvNeXt-Tiny segmentation (60 epochs)", seg["epoch_seconds"].sum() / 60.0, "#2ca02c"),
+        ("EfficientNet-B2 classification (40 epochs)", disease["seconds"].sum() / 60.0, "#d95f02"),
     ]
     labels = [p[0] for p in phases]
     mins = [p[1] for p in phases]
@@ -85,8 +85,8 @@ def make_fig21():
         text = f"{m:.1f} min ({m/60:.2f}h)" if m >= 60 else f"{m:.2f} min ({m*60:.0f}s)"
         ax.text(bar.get_width() + 2, bar.get_y() + bar.get_height()/2, text, va="center", fontweight="bold", fontsize=10)
     ax.set_xlabel("Execution Duration (Minutes)", fontweight="bold")
-    ax.set_title("Dental AI v2.0 Real Training Timeline (NVIDIA RTX 3060 8GB)", fontweight="bold")
-    ax.set_xlim(0, 165)
+    ax.set_title("Observed V2 Training Duration", fontweight="bold")
+    ax.set_xlim(0, max(mins) * 1.2)
     ax.grid(axis="x", linestyle="--", alpha=0.5)
     plt.tight_layout()
     save_dual(fig, "Fig21_training_timeline.png")
@@ -99,12 +99,11 @@ def make_fig22():
     
     # VRAM allocation
     ax1.plot(df_seg["epoch"], df_seg["vram_allocated_mb"] / 1024, color="#2b5c8f", lw=2, label="Allocated VRAM")
-    ax1.axhline(8.0, color="red", linestyle="--", lw=1.5, label="Total Physical VRAM (8.0 GB)")
-    ax1.axhline(5.48, color="green", linestyle=":", lw=1.5, label="Peak Reserved (5.48 GB)")
+    ax1.plot(df_seg["epoch"], df_seg["vram_reserved_mb"] / 1024, color="#d95f02", lw=2, label="Reserved VRAM")
     ax1.set_xlabel("Epoch", fontweight="bold")
     ax1.set_ylabel("Memory (Gigabytes)", fontweight="bold")
-    ax1.set_ylim(0, 9.0)
-    ax1.set_title("GPU VRAM Utilization (AMP FP16)", fontweight="bold")
+    ax1.set_ylim(0, max(1.0, float((df_seg[["vram_allocated_mb", "vram_reserved_mb"]].max().max() / 1024) * 1.15)))
+    ax1.set_title("Recorded GPU Memory After Validation", fontweight="bold")
     ax1.grid(True, linestyle="--", alpha=0.5)
     ax1.legend(loc="lower right")
 
@@ -148,26 +147,25 @@ def make_fig24():
 
 # 5. Fig23: Model Architecture Comparison
 def make_fig23():
+    """Plot only the two V2 components; historical models are not a baseline."""
+    seg = pd.read_csv(ROOT / "outputs" / "v2_segmentation" / "segformer_tooth_seg_final_eval.csv")
+    disease = pd.read_csv(ROOT / "outputs" / "v2_disease_classification" / "disease_test_per_class_results.csv")
     fig, ax = plt.subplots(figsize=(8, 4.5))
-    models = ["Old TinyUNet (v1)", "Swin-T (Teacher)", "ConvNeXt-Tiny (v2)"]
-    params = [0.118, 28.5, 28.45]
-    dice = [0.8588, 0.9120, 0.9488]
-    vram = [0.68, 7.8, 5.48]
+    models = ["Segmentation\n(DentalAI test)", "Classification\n(DENTEX test)"]
+    score = [
+        float(seg.loc[seg["cohort"] == "DentalAI Internal Test", "dice_mean"].iloc[0]),
+        float(disease["f1"].mean()),
+    ]
 
     x = np.arange(len(models))
-    width = 0.35
-
-    ax.bar(x - width/2, dice, width, label="Test Dice Score", color="#2b5c8f", edgecolor="black")
-    ax2 = ax.twinx()
-    ax2.bar(x + width/2, vram, width, label="Peak VRAM (GB)", color="#d95f02", edgecolor="black")
-
-    ax.set_ylabel("Dice Similarity Coefficient", fontweight="bold", color="#2b5c8f")
-    ax2.set_ylabel("Peak VRAM Used (GB)", fontweight="bold", color="#d95f02")
+    ax.bar(x, score, color=["#2b5c8f", "#d95f02"], edgecolor="black")
+    for pos, value in zip(x, score):
+        ax.text(pos, value + 0.02, f"{value:.4f}", ha="center", fontweight="bold")
+    ax.set_ylabel("Task-specific score", fontweight="bold")
     ax.set_xticks(x)
     ax.set_xticklabels(models, fontweight="bold")
-    ax.set_ylim(0.7, 1.0)
-    ax2.set_ylim(0, 9.0)
-    ax.set_title("Architecture Evolution & Test Performance", fontweight="bold")
+    ax.set_ylim(0, 1.0)
+    ax.set_title("V2 Test Scores (Not a Cross-Task Comparison)", fontweight="bold")
     plt.tight_layout()
     save_dual(fig, "Fig23_student_vs_teacher.png")
 
@@ -175,16 +173,19 @@ def make_fig23():
 # 6. Fig17: Clinical Triage Pie
 def make_fig17():
     df_mc = pd.read_csv(ROOT / "outputs" / "v2_mc_dropout" / "mc_dropout_triage_summary.csv")
-    auto_row = df_mc[df_mc["stratum"].str.contains("Low")].iloc[0]
+    low_row = df_mc[df_mc["stratum"].str.contains("Low")].iloc[0]
+    high_row = df_mc[df_mc["stratum"].str.contains("High")].iloc[0]
     
-    labels = [f"Auto-Approved (<= 0.05)\nN = {int(auto_row['count'])} (100.0%)", "Radiologist Review (> 0.05)\nN = 0 (0.0%)"]
-    sizes = [107, 0]
+    labels = [
+        f"Low uncertainty\nN = {int(low_row['count'])} ({low_row['percentage']:.1f}%)",
+        f"High uncertainty\nN = {int(high_row['count'])} ({high_row['percentage']:.1f}%)",
+    ]
+    sizes = [low_row["count"], high_row["count"]]
     colors = ["#2ca02c", "#d62728"]
     
     fig, ax = plt.subplots(figsize=(6, 5))
-    ax.pie([100], labels=["Auto-Approved (Mean Epistemic Var < 0.005)\n100% (N=107 Test Cases)"],
-           colors=["#2ca02c"], autopct="%1.1f%%", textprops={"fontsize": 11, "weight": "bold"})
-    plt.title("Epistemic Uncertainty Risk Stratification (N=20 Stochastic Passes)", fontweight="bold")
+    ax.pie(sizes, labels=labels, colors=colors, autopct="%1.1f%%", textprops={"fontsize": 11, "weight": "bold"})
+    plt.title("Experimental Uncertainty Stratification (20 Stochastic Passes)", fontweight="bold")
     plt.tight_layout()
     save_dual(fig, "Fig17_clinical_triage_pie.png")
 

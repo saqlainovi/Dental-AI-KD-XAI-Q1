@@ -21,6 +21,7 @@ import os
 import sys
 import time
 import argparse
+import random
 import pandas as pd
 import numpy as np
 import cv2
@@ -37,7 +38,7 @@ except ImportError:
     sys.exit(1)
 
 # ── Paths ──────────────────────────────────────────────────────────────
-ROOT = Path(r"j:\OneDrive\WORK\RECHARCH TEAM\DENTAL")
+ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data" / "processed_v2"
 MANIFEST_PATH = DATA_DIR / "dataset_manifest_v2.csv"
 OUTPUT_DIR = ROOT / "outputs" / "v2_segmentation"
@@ -267,6 +268,15 @@ def train_pipeline(args):
     print(f"Learning Rate: {args.lr}")
     print(f"AMP FP16: {args.amp}")
 
+    # Record and apply a single seed before the shuffled DataLoader and model are
+    # created.  This makes a final run traceable; exact GPU bitwise reproducibility
+    # still depends on the installed CUDA/PyTorch versions.
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
+
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -495,6 +505,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=6e-5, help="Base learning rate")
     parser.add_argument("--backbone", type=str, default="convnext_tiny", help="timm backbone name")
     parser.add_argument("--amp", action="store_true", default=True, help="Use FP16 Automatic Mixed Precision")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed recorded in the checkpoint")
     args = parser.parse_args()
 
     train_pipeline(args)

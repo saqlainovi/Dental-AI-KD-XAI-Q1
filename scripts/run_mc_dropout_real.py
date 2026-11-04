@@ -18,6 +18,7 @@ Usage:
 import os
 import sys
 import argparse
+import json
 import pandas as pd
 import numpy as np
 import cv2
@@ -26,10 +27,11 @@ import torch.nn.functional as F
 from pathlib import Path
 from sklearn.metrics import accuracy_score
 
-ROOT = Path(r"j:\OneDrive\WORK\RECHARCH TEAM\DENTAL")
+ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data" / "processed_v2"
 MANIFEST_PATH = DATA_DIR / "dataset_manifest_v2.csv"
 DISEASE_MODEL_PATH = ROOT / "outputs" / "v2_disease_classification" / "checkpoints" / "best_disease_classifier.pt"
+THRESHOLDS_PATH = ROOT / "outputs" / "v2_disease_classification" / "calibrated_thresholds.json"
 OUTPUT_DIR = ROOT / "outputs" / "v2_mc_dropout"
 
 DISEASES = ["Impacted", "Caries", "Periapical", "DeepCaries"]
@@ -48,7 +50,7 @@ def run_mc_dropout(args):
     print("Dental AI v2.0 — Real Monte Carlo Dropout Uncertainty Triage")
     print("=" * 70)
     print(f"Stochastic Passes (N): {args.passes}")
-    print(f"Safety Threshold (tau): {args.threshold}")
+    print(f"Uncertainty threshold (tau): {args.threshold}")
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -73,6 +75,23 @@ def run_mc_dropout(args):
         ckpt = torch.load(DISEASE_MODEL_PATH, map_location=device)
         model = DentalMultiDiseaseClassifier(backbone_name=ckpt["args"].get("backbone", "efficientnet_b2"), num_classes=4, pretrained=False)
         model.load_state_dict(ckpt["model_state_dict"])
+
+    # Classification decisions must use the thresholds calibrated on the
+    # validation split, not an arbitrary 0.5 cut-off.  The script refuses to
+    # silently substitute a threshold because that would make its triage
+    # accuracy incomparable with the reported disease evaluation.
+    if not THRESHOLDS_PATH.exists():
+        raise FileNotFoundError(
+            f"Missing calibrated thresholds: {THRESHOLDS_PATH}. "
+            "Run disease evaluation before uncertainty analysis."
+        )
+    with THRESHOLDS_PATH.open("r", encoding="utf-8") as f:
+        threshold_map = json.load(f)
+    missing = [name for name in DISEASES if name not in threshold_map]
+    if missing:
+        raise ValueError(f"Calibrated-threshold file is missing classes: {missing}")
+    decision_thresholds = np.array([float(threshold_map[name]) for name in DISEASES])
+    print("Decision thresholds (validation calibrated):", threshold_map)
 
     model.to(device)
     model.eval()
@@ -114,12 +133,18 @@ def run_mc_dropout(args):
         epistemic_var = np.var(stochastic_probs, axis=0)
         mean_var = float(np.mean(epistemic_var))
 
-        # Binary predictions at 0.5 threshold
-        preds = (mean_probs >= 0.5).astype(int)
-        is_correct = int(np.array_equal(preds, targets.astype(int)))
+        # Decisions use calibration from the independent validation split.
+        preds = (mean_probs >= decision_thresholds).astype(int)
+        is_exact_match = int(np.array_equal(preds, targets.astype(int)))
+        label_accuracy = float(np.mean(preds == targets.astype(int)))
 
-        # Triage category
-        triage_action = "Auto Approved" if mean_var <= args.threshold else "Radiologist Referral"
+        # Variance is an experimental decision-support signal, not evidence for
+        # autonomous diagnosis.  Low-variance cases remain clinician-reviewed.
+        triage_action = (
+            "Low Uncertainty (Decision Support)"
+            if mean_var <= args.threshold
+            else "High Uncertainty (Priority Review)"
+        )
 
         res_item = {
             "test_idx": idx + 1,
@@ -127,7 +152,8 @@ def run_mc_dropout(args):
             "original_name": row.get("original_name", f"sample_{idx+1}"),
             "mean_var": mean_var,
             "triage": triage_action,
-            "is_correct": is_correct,
+            "is_exact_match": is_exact_match,
+            "label_accuracy": label_accuracy,
         }
 
         for c_idx, d_name in enumerate(DISEASES):
@@ -148,43 +174,49 @@ def run_mc_dropout(args):
 
     # Summary statistics
     n_total = len(df_results)
-    auto_approved = df_results[df_results["triage"] == "Auto Approved"]
-    referrals = df_results[df_results["triage"] == "Radiologist Referral"]
+    low_uncertainty = df_results[df_results["triage"] == "Low Uncertainty (Decision Support)"]
+    high_uncertainty = df_results[df_results["triage"] == "High Uncertainty (Priority Review)"]
 
-    auto_pct = len(auto_approved) / n_total * 100
-    ref_pct = len(referrals) / n_total * 100
+    low_pct = len(low_uncertainty) / n_total * 100
+    high_pct = len(high_uncertainty) / n_total * 100
 
-    auto_acc = auto_approved["is_correct"].mean() * 100 if len(auto_approved) > 0 else 0.0
-    ref_acc = referrals["is_correct"].mean() * 100 if len(referrals) > 0 else 0.0
-    total_acc = df_results["is_correct"].mean() * 100
+    low_exact = low_uncertainty["is_exact_match"].mean() * 100 if len(low_uncertainty) > 0 else 0.0
+    high_exact = high_uncertainty["is_exact_match"].mean() * 100 if len(high_uncertainty) > 0 else 0.0
+    total_exact = df_results["is_exact_match"].mean() * 100
+    low_label_acc = low_uncertainty["label_accuracy"].mean() * 100 if len(low_uncertainty) > 0 else 0.0
+    high_label_acc = high_uncertainty["label_accuracy"].mean() * 100 if len(high_uncertainty) > 0 else 0.0
+    total_label_acc = df_results["label_accuracy"].mean() * 100
 
     print("\n" + "=" * 70)
-    print("CLINICAL SAFETY TRIAGE REPORT (REAL 20-PASS MC DROPOUT)")
+    print("UNCERTAINTY STRATIFICATION REPORT (REAL 20-PASS MC DROPOUT)")
     print("=" * 70)
     print(f"  Total Test Cases:       {n_total}")
-    print(f"  Auto-Approved (Low):    {len(auto_approved)} ({auto_pct:.1f}%) | Accuracy: {auto_acc:.1f}%")
-    print(f"  Referrals (High Var):   {len(referrals)} ({ref_pct:.1f}%) | Accuracy: {ref_acc:.1f}%")
-    print(f"  Hybrid System Accuracy: {total_acc:.1f}%")
+    print(f"  Low uncertainty:        {len(low_uncertainty)} ({low_pct:.1f}%) | Exact match: {low_exact:.1f}% | Label accuracy: {low_label_acc:.1f}%")
+    print(f"  High uncertainty:       {len(high_uncertainty)} ({high_pct:.1f}%) | Exact match: {high_exact:.1f}% | Label accuracy: {high_label_acc:.1f}%")
+    print(f"  All cases:              {n_total} (100.0%) | Exact match: {total_exact:.1f}% | Label accuracy: {total_label_acc:.1f}%")
     print("=" * 70)
 
     summary_data = [{
-        "stratum": "Low Uncertainty (Auto Approved)",
+        "stratum": "Low Uncertainty (Decision Support)",
         "threshold": f"<= {args.threshold}",
-        "count": len(auto_approved),
-        "percentage": auto_pct,
-        "concordance_accuracy": auto_acc,
+        "count": len(low_uncertainty),
+        "percentage": low_pct,
+        "exact_match_rate": low_exact,
+        "label_accuracy": low_label_acc,
     }, {
-        "stratum": "High Uncertainty (Radiologist Review)",
+        "stratum": "High Uncertainty (Priority Review)",
         "threshold": f"> {args.threshold}",
-        "count": len(referrals),
-        "percentage": ref_pct,
-        "concordance_accuracy": ref_acc,
+        "count": len(high_uncertainty),
+        "percentage": high_pct,
+        "exact_match_rate": high_exact,
+        "label_accuracy": high_label_acc,
     }, {
         "stratum": "Total Cohort",
         "threshold": "All",
         "count": n_total,
         "percentage": 100.0,
-        "concordance_accuracy": total_acc,
+        "exact_match_rate": total_exact,
+        "label_accuracy": total_label_acc,
     }]
 
     df_summary = pd.DataFrame(summary_data)

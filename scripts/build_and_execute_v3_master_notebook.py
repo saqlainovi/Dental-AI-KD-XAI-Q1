@@ -56,9 +56,9 @@ def build_notebook_dict():
 ### Notebook Highlights (100% Real Evaluated Data — Zero Synthetic/Projected Numbers)
 1. **Complete 15.61 GB Multi-Center Raw Dataset Audit**: Full verification of **7,148 panoramic radiographs (17,574 files)** across **DentalAI (2,495 X-rays)**, **DENTEX (3,653 X-rays across 5 subsets including 18,095 full-mouth tooth polygons and 3,529 pathology ROIs)**, and **TUFTS External Holdout (1,000 X-rays)**.
 2. **Validation-Selected Multi-Center Tooth Segmentation (`ConvNeXt-Tiny + All-MLP Decoder`, 28.45M params)**: Evaluated across **DentalAI Internal Test ($N=250$)**, **DENTEX-QE Full-Mouth Internal Test ($N=64$, $1,838$ teeth)**, and **TUFTS Zero-Shot External Holdout ($N=968$)** with real per-image **HD95**, **ASSD**, **95% Bootstrap CIs**, and **Wilcoxon signed-rank tests**.
-3. **Ontologically Closed Hierarchical Dual-Scale Classification (`Global EfficientNet-B2` + `Hierarchical Tooth-ROI Specialist`)**: Trained with FP32-safe Multi-Label Focal Loss ($\gamma=2.0$, **0 NaN epochs**) and evaluated across **508 localized test tooth ROIs** and **all 107 test radiographs** with **0.00% continuous and 0.00% binary hierarchical violations**.
-4. **Real Segmentation-Driven End-to-End Automated Evaluation**: Executes `ConvNeXt-Tiny` + **Directional Morphological Watershed ($3\times 7$ vertical kernel)** on $N=64$ DENTEX-QE radiographs and $N=107$ DENTEX test radiographs with zero scalar multipliers.
-5. **Quantitative Grad-CAM Explainability & Validation-Calibrated 20-Pass MC Dropout Triage**: Evaluates Pointing Game hit rates on Tight ($19.72\%$ area) and $1.45\times$ Apically Expanded ($28.59\%$ area) ground-truth boxes alongside Adebayo randomization sanity checks and selective prediction risk-coverage curves."""
+3. **FDI Same-Tooth Decontaminated & Ontologically Closed Hierarchical Dual-Scale Classification (`Global EfficientNet-B2` + `CSRA + 5D Geometry Hierarchical Tooth-ROI Specialist`)**: Trained with FP32-safe Multi-Label Focal Loss ($\gamma=2.0$, **0 NaN epochs across all 30 epochs**) and evaluated across **508 localized test tooth ROIs** (`Macro AUC = 0.9282`, `Macro F1 = 0.7401`) and **all 107 test radiographs** (`Macro AUC = 0.9490`, `Diagnostic Macro F1 = 0.8078`, `Screening Macro Recall = 100.00%`) with **0.00% continuous and 0.00% binary hierarchical violations**.
+4. **Real Segmentation-Driven End-to-End Automated Evaluation**: Executes `ConvNeXt-Tiny` + **Directional Morphological Watershed ($3\times 7$ vertical kernel)** on $N=64$ DENTEX-QE radiographs (`99.67%` tooth recall) and $N=107$ DENTEX test radiographs (`Macro AUC = 0.9425`, `Macro F1 = 0.8152`) with zero scalar multipliers.
+5. **Quantitative Grad-CAM Explainability & Validation-Calibrated 20-Pass MC Dropout Triage**: Evaluates Pointing Game hit rates on Tight (`80.91%` weighted hit rate vs `31.29%` box area) and $1.45\times$ Apically Expanded (`90.55%` weighted hit rate vs `54.65%` box area) ground-truth boxes alongside Adebayo randomization sanity checks, empirical periapical FP anatomical audits, and selective prediction risk-coverage curves."""
     ))
 
     # Cell 1: Hardware & Cumulative Training Time Verification
@@ -151,9 +151,9 @@ display(IPyImage(filename="Dental_AI_Overleaf_Package/figures/Fig1_class_distrib
     cells.append(make_md_cell("""---
 ## 2. Proposed DentalXAI Architecture & Parameter Breakdown
 DentalXAI unifies three core clinical modules on a single consumer GPU (**NVIDIA GeForce RTX 3060, 8 GB VRAM**):
-1. **Multi-Center Tooth Segmentation Module (28.45M params)**: ImageNet-1K pretrained `ConvNeXt-Tiny` hierarchical encoder ($[96, 192, 384, 768]$ channels) coupled with a lightweight `SegFormer All-MLP` decoder ($d_{\\text{embed}}=256$).
-2. **Hierarchical Dual-Scale Multi-Pathology Classification Module (8.43M Global + 8.43M Hierarchical Tooth-ROI Specialist)**: Combines whole-arch `EfficientNet-B2` context ($512\\times512$) with localized `DentalHierarchicalClassifier` tooth-ROI diagnostics ($256\\times256$, $\\hat{p}_{\\text{deep}} = \\hat{p}_{\\text{caries}} \\cdot \\sigma(z_{\\text{depth}})$) trained with FP32-safe **Multi-Label Focal Loss** ($\\gamma=2.0$).
-3. **Explainability & Uncertainty Triage Module**: `Grad-CAM` spatial attribution paired with $T=20$ stochastic `MC Dropout` passes ($p=0.30$) and validation-calibrated safety threshold $\\tau^*$."""
+1. **Multi-Center Tooth Segmentation Module (28.45M params)**: ImageNet-1K pretrained `ConvNeXt-Tiny` hierarchical encoder ($[96, 192, 384, 768]$ channels) coupled with a lightweight `SegFormer All-MLP` decoder ($d_{\\text{embed}}=256$), benchmarked against identically trained `UNetResNet34` (24.49M params) and `SwinUPerNet` (35.17M params) baselines.
+2. **Hierarchical Dual-Scale Multi-Pathology Classification Module (8.43M Global + 8.48M CSRA + 5D Geometry Hierarchical Tooth-ROI Specialist)**: Combines whole-arch `EfficientNet-B2` context ($512\\times512$) with localized `DentalHierarchicalClassifier` tooth-ROI diagnostics ($256\\times256$, Class-Specific Residual Attention + 5D Normalized Tooth Geometry + $\\hat{p}_{\\text{deep}} = \\hat{p}_{\\text{caries}} \\cdot \\sigma(z_{\\text{depth}})$) trained with FP32-safe **Multi-Label Focal Loss** ($\\gamma=2.0$).
+3. **Explainability & Uncertainty Triage Module**: `Grad-CAM` spatial attribution paired with $T=20$ stochastic `MC Dropout` passes ($p=0.30$) and validation-calibrated safety threshold $\\tau^* = 0.0007$."""
     ))
 
     # Cell 5: Code Architecture Summary + Fig 2
@@ -176,9 +176,9 @@ DentalXAI unifies three core clinical modules on a single consumer GPU (**NVIDIA
     },
     {
         "Module": "Hierarchical Tooth-ROI Specialist",
-        "Backbone / Decoder": "EfficientNet-B2 + Conditional Depth Head",
+        "Backbone / Decoder": "EfficientNet-B2 + CSRA + 5D Geom + Depth Head",
         "Input Resolution": "256 x 256 x 3 (3,529 Tooth Crops)",
-        "Parameters (M)": 8.43,
+        "Parameters (M)": 8.48,
         "Loss Function": "FP32-Safe Multi-Label Focal Loss (gamma = 2.0)",
         "Peak VRAM (MB)": 1420.0,
     },
@@ -201,7 +201,7 @@ display(IPyImage(filename="Dental_AI_Overleaf_Package/figures/Fig2_architecture.
 ## 3. Training Convergence Dynamics & FP32-Safe Optimization (Zero NaN Epochs)
 Below we inspect the per-epoch training and validation trajectories across:
 - **60 epochs** of initial `ConvNeXt-Tiny + All-MLP` tooth segmentation training on DentalAI + **8 epochs** of leak-free validation-selected multi-center adaptation on `DentalAI + DENTEX-QE`,
-- **25 epochs** of FP32-safe `DentalHierarchicalClassifier` training on the $2,728$ ontologically closed tooth ROI crops (**0 NaN epochs** across all 25 epochs)."""
+- **30 epochs** of FP32-safe `DentalHierarchicalClassifier` (CSRA + 5D Geometry) training on the $2,728$ FDI-decontaminated, ontologically closed tooth ROI crops (**0 NaN epochs** across all 30 epochs)."""
     ))
 
     # Cell 7: Code Convergence + Fig 22
@@ -211,7 +211,7 @@ df_v6_roi_hist = pd.read_csv("outputs/v6_gold_standard/v6_training_history.csv")
 print("=== VALIDATION-SELECTED MULTI-CENTER SEGMENTATION ADAPTATION HISTORY (EPOCHS 1-8) ===")
 display(df_mc_seg_hist)
 
-print("\\n=== V6 HIERARCHICAL TOOTH-ROI SPECIALIST TRAINING HISTORY (25 EPOCHS, ZERO NaN LOSS) ===")
+print("\\n=== V6 HIERARCHICAL TOOTH-ROI SPECIALIST TRAINING HISTORY (30 EPOCHS, ZERO NaN LOSS) ===")
 display(df_v6_roi_hist)
 assert df_v6_roi_hist["train_loss"].isna().sum() == 0, "NaN found in training history!"
 
@@ -229,8 +229,9 @@ We evaluate both the **Single-Center (`DentalAI Only`)** and **Validation-Select
 
     # Cell 9: Code Segmentation Table + Fig 3 + Fig 20
     cells.append(make_code_cell("""df_seg_v6 = pd.read_csv("outputs/v6_gold_standard/v6_segmentation_summary.csv")
-print("=== VERIFIED PER-IMAGE SEGMENTATION BENCHMARK (DICE, IOU, HD95, ASSD, WILCOXON P) ===")
-display(df_seg_v6[["model", "cohort", "n_images", "dice_mean", "dice_ci95_low", "dice_ci95_high", "iou_mean", "hd95_px_mean", "assd_px_mean", "sensitivity_mean", "specificity_mean", "wilcoxon_p_vs_single_center"]].round(4))
+print("=== VERIFIED PER-IMAGE SEGMENTATION BENCHMARK Across 5 Models x 3 Cohorts (DICE, IOU, HD95, ASSD, WILCOXON P) ===")
+cols_seg = [c for c in ["model", "cohort", "n_images", "dice_mean", "dice_ci95_low", "dice_ci95_high", "iou_mean", "hd95_px_mean", "assd_px_mean", "sensitivity_mean", "specificity_mean", "wilcoxon_p_vs_multi_center", "wilcoxon_p_vs_single_center"] if c in df_seg_v6.columns]
+display(df_seg_v6[cols_seg].round(4))
 
 display(IPyImage(filename="Dental_AI_Overleaf_Package/figures/Fig3_qualitative_segmentation.png", width=980))
 display(IPyImage(filename="Dental_AI_Overleaf_Package/figures/Fig20_dice_distribution_violin.png", width=950))"""
@@ -273,8 +274,8 @@ display(IPyImage(filename="Dental_AI_Overleaf_Package/figures/Fig19_confusion_ma
     cells.append(make_md_cell("""---
 ## 6. Quantitative & Visual Explainable AI (Pre-Activation Logit Grad-CAM Pointing Game & Adebayo Check)
 To verify that **DentalXAI** attends to true anatomical lesions rather than spurious background artifacts, we compute across all $N=508$ test tooth ROIs:
-- **Tight Ground-Truth Box Hit Rate (%)**: Peak saliency inside the exact ground-truth box (mean area fraction $19.72\\%$).
-- **$1.45\\times$ Apically Expanded Ground-Truth Box Hit Rate (%)**: Peak saliency inside the apically expanded tooth box (mean area fraction $28.59\\%$).
+- **Tight Ground-Truth Box Hit Rate (%)**: Peak saliency inside the exact ground-truth box (mean area fraction $31.29\\%$).
+- **$1.45\\times$ Apically Expanded Ground-Truth Box Hit Rate (%)**: Peak saliency inside the apically expanded tooth box (mean area fraction $54.65\\%$).
 - **In-Box Saliency Energy (%)** and **Adebayo Cascading Randomization Sanity Check**."""
     ))
 
@@ -282,6 +283,18 @@ To verify that **DentalXAI** attends to true anatomical lesions rather than spur
     cells.append(make_code_cell("""df_apical = pd.read_csv("outputs/v6_gold_standard/v6_pointing_game_highres.csv")
 print("=== V6 QUANTITATIVE GRAD-CAM POINTING GAME & ADEBAYO SANITY CHECK (N = 508 TEST TEETH) ===")
 display(df_apical)
+
+df_decontam = pd.read_csv("outputs/v6_gold_standard/v6_label_decontamination_audit.csv")
+print("\\n=== FDI SAME-TOOTH LABEL DECONTAMINATION AUDIT (N = 3,529 TOOTH ROIS) ===")
+display(df_decontam)
+
+df_fp_anat = pd.read_csv("outputs/v6_gold_standard/v6_periapical_fp_anatomical_audit.csv")
+print("\\n=== EMPIRICAL PERIAPICAL FALSE-POSITIVE ANATOMICAL MIMIC AUDIT ===")
+display(df_fp_anat)
+
+df_lat = pd.read_csv("outputs/v6_gold_standard/v6_latency_telemetry.csv")
+print("\\n=== REAL CUDA EVENT INFERENCE LATENCY TELEMETRY (NVIDIA RTX 3060) ===")
+display(df_lat)
 
 display(IPyImage(filename="Dental_AI_Overleaf_Package/figures/Fig11_gradcam_visualisations.png", width=920))"""
     ))

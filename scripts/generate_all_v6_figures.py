@@ -27,6 +27,13 @@ import matplotlib.patches as mpatches
 from sklearn.metrics import roc_curve, precision_recall_curve
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from train_v6_gold_pipeline import (
+    DentalHierarchicalClassifier,
+    build_target_tooth_focus_mask,
+    extract_normalized_geom,
+)
+
 CROPS_DIR = ROOT / "outputs" / "v6_gold_standard" / "crops"
 OUT_V6 = ROOT / "outputs" / "v6_gold_standard"
 FIG_V6 = OUT_V6 / "figures"
@@ -54,42 +61,6 @@ def save_all_dirs(fig, filename, dpi=260):
     plt.close(fig)
     sz = (OVERLEAF_FIG / filename).stat().st_size / 1024.0
     print(f"  [SAVED] {filename} -> Overleaf & V6/V3 dirs ({sz:.1f} KB)")
-
-
-class DentalHierarchicalClassifier(nn.Module):
-    def __init__(self, backbone_name="efficientnet_b2", pretrained=False, dropout_rate=0.3):
-        super().__init__()
-        self.backbone = timm.create_model(backbone_name, pretrained=pretrained, num_classes=0)
-        in_features = self.backbone.num_features
-        self.feature_head = nn.Sequential(
-            nn.Dropout(dropout_rate),
-            nn.Linear(in_features, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout_rate),
-        )
-        self.head_impacted = nn.Linear(512, 1)
-        self.head_caries = nn.Linear(512, 1)
-        self.head_depth = nn.Linear(512, 1)
-        self.head_periapical = nn.Linear(512, 1)
-
-    def forward(self, x):
-        feat = self.backbone(x)
-        h = self.feature_head(feat)
-        z_impacted = self.head_impacted(h)
-        z_caries = self.head_caries(h)
-        z_depth = self.head_depth(h)
-        z_periapical = self.head_periapical(h)
-
-        p_impacted = torch.sigmoid(z_impacted.float())
-        p_caries = torch.sigmoid(z_caries.float())
-        p_depth = torch.sigmoid(z_depth.float())
-        p_periapical = torch.sigmoid(z_periapical.float())
-        p_deep = p_caries * p_depth
-
-        probs = torch.cat([p_impacted, p_caries, p_periapical, p_deep], dim=1)
-        logits = torch.cat([z_impacted, z_caries, z_periapical, z_caries + z_depth], dim=1)
-        return probs, logits
 
 
 # ── Figure 9: Patient-Level (N=107) & Tooth-ROI (N=508) ROC and PR Curves ────
@@ -266,6 +237,7 @@ def generate_fig11_gradcam():
 
     mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
     std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+    clahe_obj = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 
     best_samples = {}
     for idx, row in test_df.iterrows():
@@ -275,29 +247,39 @@ def generate_fig11_gradcam():
         img = cv2.imread(str(p))
         if img is None:
             continue
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        img_rgb_raw = cv2.cvtColor(cv2.merge((clahe_obj.apply(l), a, b)), cv2.COLOR_LAB2RGB).astype(np.float32) / 255.0
+
+        crop_w = max(1.0, float(row["crop_x2"] - row["crop_x1"]))
+        crop_h = max(1.0, float(row["crop_y2"] - row["crop_y1"]))
+        focus_mask = build_target_tooth_focus_mask(row["bbox_w"], row["bbox_h"], crop_w, crop_h, size=256)
+        img_rgb = img_rgb_raw * focus_mask
+
         img_norm = (img_rgb - mean) / std
         t_img = torch.from_numpy(img_norm.transpose(2, 0, 1)).unsqueeze(0).to(DEVICE)
+        g_in = torch.from_numpy(extract_normalized_geom(row["bbox_x"], row["bbox_y"], row["bbox_w"], row["bbox_h"], row["img_w"], row["img_h"])).unsqueeze(0).to(DEVICE)
 
         acts.clear()
         grads.clear()
         model.zero_grad()
-        probs, logits = model(t_img)
-        score = logits[0, c_idx]
+        probs, logits = model(t_img, geom=g_in, return_logits=True)
+        score = (logits[0, 1] + logits[0, 3]) if c_idx == 3 else logits[0, c_idx]
         score.backward()
 
         act = acts[0].detach().cpu().numpy()[0]
         grad = grads[0].detach().cpu().numpy()[0]
         w = np.mean(grad, axis=(1, 2))
-        cam = np.maximum(np.sum(w[:, None, None] * act, axis=0), 0)
-        cam = cv2.resize(cam, (256, 256))
+        cam8 = np.maximum(np.sum(w[:, None, None] * act, axis=0), 0)
+        cam8[0, :] = 0; cam8[-1, :] = 0; cam8[:, 0] = 0; cam8[:, -1] = 0
+        cam = cv2.resize(cam8, (256, 256))
         if cam.max() > 0:
             cam = cam / cam.max()
 
         conf = float(probs[0, c_idx].item())
         if d_name not in best_samples or (conf > best_samples[d_name]["conf"] and conf < 0.999):
             best_samples[d_name] = {
-                "img_rgb": img_rgb,
+                "img_rgb": img_rgb_raw,
                 "cam": cam,
                 "conf": conf,
                 "row": row,

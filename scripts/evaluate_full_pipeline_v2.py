@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-ROOT = Path(r"j:\OneDrive\WORK\RECHARCH TEAM\DENTAL")
+ROOT = Path(__file__).resolve().parents[1]
 SEG_DIR = ROOT / "outputs" / "v2_segmentation"
 DISEASE_DIR = ROOT / "outputs" / "v2_disease_classification"
 MC_DIR = ROOT / "outputs" / "v2_mc_dropout"
@@ -108,7 +108,7 @@ def generate_figures():
         lines2, labels2 = ax2.get_legend_handles_labels()
         ax1.legend(lines1 + lines2, labels1 + labels2, loc="lower right")
 
-        plt.title("SegFormer-B2 Tooth Segmentation Convergence", fontweight="bold")
+        plt.title("ConvNeXt-Tiny + All-MLP Tooth Segmentation Convergence", fontweight="bold")
         out_p = FIG_DIR / "Fig24_convergence_analysis.png"
         plt.savefig(out_p)
         plt.savefig(OVERLEAF_FIG_DIR / "Fig24_convergence_analysis.png")
@@ -122,8 +122,9 @@ def generate_figures():
         auto_row = df_mc[df_mc["stratum"].str.contains("Low")].iloc[0]
         ref_row = df_mc[df_mc["stratum"].str.contains("High")].iloc[0]
 
-        labels = [f"Auto-Approved\n({auto_row['percentage']:.1f}%)\nAcc: {auto_row['concordance_accuracy']:.1f}%",
-                  f"Radiologist Referral\n({ref_row['percentage']:.1f}%)\nAcc: {ref_row['concordance_accuracy']:.1f}%"]
+        exact_col = "exact_match_rate" if "exact_match_rate" in df_mc.columns else "concordance_accuracy"
+        labels = [f"Low uncertainty\n({auto_row['percentage']:.1f}%)\nExact match: {auto_row[exact_col]:.1f}%",
+                  f"High uncertainty\n({ref_row['percentage']:.1f}%)\nExact match: {ref_row[exact_col]:.1f}%"]
         sizes = [auto_row["count"], ref_row["count"]]
         colors = ["#2ca02c", "#d62728"]
         explode = (0, 0.08)
@@ -137,7 +138,7 @@ def generate_figures():
             autotext.set_color("white")
             autotext.set_weight("bold")
 
-        plt.title("Epistemic Uncertainty Risk Stratification (N=20 Passes)", fontweight="bold")
+        plt.title("Experimental Uncertainty Stratification (N=20 Passes)", fontweight="bold")
         out_p = FIG_DIR / "Fig17_clinical_triage_pie.png"
         plt.savefig(out_p)
         plt.savefig(OVERLEAF_FIG_DIR / "Fig17_clinical_triage_pie.png")

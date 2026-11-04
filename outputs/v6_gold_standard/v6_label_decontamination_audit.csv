@@ -1,0 +1,5 @@
+disease,column,contaminated_window_positives,true_same_tooth_fdi_positives,false_neighbor_labels_removed
+Impacted,disease_impacted,884,609,275
+Caries,disease_caries,2636,2823,0
+Periapical,disease_periapical,320,211,109
+DeepCaries,disease_deep_caries,948,628,320
