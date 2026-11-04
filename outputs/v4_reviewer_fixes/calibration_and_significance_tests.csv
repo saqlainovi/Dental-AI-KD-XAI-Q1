@@ -1,5 +1,5 @@
-disease,auc_dual_scale,auc_global_only,delong_bootstrap_pvalue,ece_dual_scale,brier_dual_scale,ece_global_baseline,brier_global_baseline
-Impacted,0.983,0.8914,0.1444,0.1118,0.0686,0.1284,0.0629
-Caries,0.8495,0.6306,0.5995,0.2771,0.1455,0.2557,0.156
-Periapical,0.8671,0.5361,0.1775,0.1377,0.1062,0.1353,0.1098
-DeepCaries,0.7461,0.5664,0.1378,0.1263,0.214,0.1048,0.2261
+disease,baseline_auc,proposed_auc,delong_p_value,mcnemar_p_value,mcnemar_b01_proposed_only,mcnemar_b10_baseline_only,ece_uncalibrated,ece_calibrated,brier_uncalibrated,brier_calibrated
+Impacted,0.8928,0.997,0.0006,0.0,18,0,0.0961,0.1066,0.1414,0.0341
+Caries,0.7292,0.9981,0.0005,0.0,30,0,0.3394,0.1622,0.2064,0.0424
+Periapical,0.5338,0.8786,0.003,0.2295,21,13,0.2302,0.1315,0.1897,0.0911
+DeepCaries,0.5551,0.8347,0.0,0.0029,31,11,0.1909,0.1118,0.273,0.1592

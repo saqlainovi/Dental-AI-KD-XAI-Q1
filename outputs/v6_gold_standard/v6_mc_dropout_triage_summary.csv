@@ -1,0 +1,4 @@
+stratum,count,percentage,label_accuracy_pct,exact_match_pct,mean_variance,mannwhitney_p
+"Low Uncertainty (<= 0.0012, Auto-Approve)",80,74.77,91.88,68.75,0.0006,0.00023
+"High Uncertainty (> 0.0012, Priority Referral)",27,25.23,77.78,37.04,0.0019,0.00023
+Total Unfiltered Cohort (All Test Radiographs),107,100.0,88.32,60.75,0.0009,0.00023
